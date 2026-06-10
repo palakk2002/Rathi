@@ -357,7 +357,7 @@ const MobileCategories = () => {
           style={{ minHeight: contentHeight }}>
           {/* Category Header - Fixed at top */}
           {selectedCategory && (
-            <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
+            <div className="sticky top-0 z-40 bg-[#E8E2FF] border-b border-purple-100 px-4 py-3">
               <div
                 key={`header-${selectedCategoryId}`}
                 className="flex items-center gap-2 md:gap-3">

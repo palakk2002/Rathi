@@ -169,7 +169,7 @@ const MobileProfile = () => {
               </div>
             </div>
 
-            <div className="lg:hidden px-4 py-4 bg-white border-b border-gray-200 sticky top-0 z-30">
+            <div className="lg:hidden px-4 py-4 bg-[#E8E2FF] border-b border-purple-100 sticky top-0 z-30">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => activeTab === 'menu' ? navigate(-1) : setActiveTab('menu')}

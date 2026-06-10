@@ -382,7 +382,7 @@ const MobileSearch = () => {
       <MobileLayout showBottomNav={true} showCartBar={true}>
         <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto min-h-screen bg-gray-50">
           {/* Search Header */}
-          <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30">
+          <div className="px-4 py-4 bg-[#E8E2FF] border-b border-purple-100 sticky top-1 z-30">
             <form onSubmit={handleSearch} className="mb-3 lg:hidden">
               <div className="relative">
                 <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl z-10" />

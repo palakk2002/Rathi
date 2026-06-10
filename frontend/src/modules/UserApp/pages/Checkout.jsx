@@ -349,7 +349,7 @@ const MobileCheckout = () => {
       <MobileLayout showBottomNav={false} showCartBar={false}>
         <div className="w-full pb-24 min-h-screen bg-gray-50">
           {/* Header */}
-          <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+          <div className="bg-[#E8E2FF] border-b border-purple-100 sticky top-0 z-30 shadow-sm">
             {/* Title Bar */}
             <div className="px-4 py-3 flex items-center gap-3">
               <button

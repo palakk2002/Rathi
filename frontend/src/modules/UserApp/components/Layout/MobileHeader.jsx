@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   FiShoppingBag,
+  FiMoon,
+  FiUser,
+  FiSearch,
 } from "react-icons/fi";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
@@ -13,8 +16,6 @@ const appLogo = {
 };
 import { motion } from "framer-motion";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import SearchBar from "../../../../shared/components/SearchBar";
-import MobileCategoryIcons from "../Mobile/MobileCategoryIcons";
 
 // Category gradient mapping - Very subtle pastel colors
 const categoryGradients = {
@@ -53,97 +54,6 @@ const MobileHeader = () => {
     (state) => state.cartAnimationTrigger
   );
   const { user, isAuthenticated, logout } = useAuthStore();
-
-  // Get current category from URL (supports both /category/:id and legacy /app/category/:id)
-  const getCurrentCategoryId = () => {
-    const match = location.pathname.match(/\/(?:app\/)?category\/([^/]+)/);
-    return match ? String(match[1]) : null;
-  };
-
-  const currentCategoryId = getCurrentCategoryId();
-
-  // Get current page from location
-  const getCurrentPage = () => {
-    const path = location.pathname;
-    if (path === "/" || path === "/home") return "home";
-    if (path.startsWith("/product/")) return "product";
-    if (path.startsWith("/category/")) return "category";
-    if (path === "/search") return "search";
-    if (path === "/wishlist") return "wishlist";
-    if (path === "/profile") return "profile";
-    if (path === "/orders") return "orders";
-    if (path.startsWith("/orders/")) return "orderDetail";
-    if (path === "/checkout") return "checkout";
-    if (path === "/offers") return "offers";
-    if (path === "/daily-deals") return "dailyDeals";
-    if (path === "/flash-sale") return "flashSale";
-    if (path.startsWith("/seller/")) return "vendor";
-    return "default";
-  };
-
-  const currentPage = getCurrentPage();
-
-  // Memoize gradient background style to prevent unnecessary re-renders
-  const headerBackground = useMemo(() => {
-    // Category pages - keep existing category-specific gradients
-    if (currentCategoryId) {
-      const gradientMap = {
-        1: "linear-gradient(to bottom, rgb(252, 231, 243) 0%, rgb(255, 240, 245) 50%, rgb(255, 255, 255) 100%)", // Pink - moderate
-        2: "linear-gradient(to bottom, rgb(254, 243, 199) 0%, rgb(255, 248, 220) 50%, rgb(255, 255, 255) 100%)", // Brown/Amber - moderate
-        3: "linear-gradient(to bottom, rgb(255, 237, 213) 0%, rgb(255, 245, 230) 50%, rgb(255, 255, 255) 100%)", // Orange - moderate
-        4: "linear-gradient(to bottom, rgb(209, 250, 229) 0%, rgb(236, 253, 245) 50%, rgb(255, 255, 255) 100%)", // Green - moderate
-        5: "linear-gradient(to bottom, rgb(243, 232, 255) 0%, rgb(250, 245, 255) 50%, rgb(255, 255, 255) 100%)", // Purple - moderate
-        6: "linear-gradient(to bottom, rgb(219, 234, 254) 0%, rgb(239, 246, 255) 50%, rgb(255, 255, 255) 100%)", // Blue - moderate
-      };
-      return (
-        gradientMap[currentCategoryId] ||
-        "linear-gradient(to bottom, #EDE9FE 0%, #F5F3FF 50%, #FFFFFF 100%)"
-      );
-    }
-
-    // Page-specific gradients
-    const pageGradients = {
-      home: "linear-gradient(to bottom, rgb(196, 181, 253) 0%, rgb(221, 214, 254) 25%, rgb(245, 243, 255) 50%, rgb(255, 255, 255) 100%)", // Purple gradient for home - lighter intensity
-      product:
-        "linear-gradient(to bottom, rgb(237, 233, 254) 0%, rgb(245, 243, 255) 50%, rgb(255, 255, 255) 100%)", // Light purple
-      search:
-        "linear-gradient(to bottom, rgb(249, 115, 22) 0%, rgb(251, 146, 60) 30%, rgb(255, 237, 213) 60%, rgb(255, 255, 255) 100%)", // Orange gradient
-      wishlist:
-        "linear-gradient(to bottom, rgb(239, 68, 68) 0%, rgb(248, 113, 113) 30%, rgb(254, 226, 226) 60%, rgb(255, 255, 255) 100%)", // Red/pink gradient
-      profile:
-        "linear-gradient(to bottom, rgb(16, 185, 129) 0%, rgb(52, 211, 153) 30%, rgb(209, 250, 229) 60%, rgb(255, 255, 255) 100%)", // Green gradient
-      orders:
-        "linear-gradient(to bottom, rgb(59, 130, 246) 0%, rgb(96, 165, 250) 30%, rgb(219, 234, 254) 60%, rgb(255, 255, 255) 100%)", // Blue gradient
-      orderDetail:
-        "linear-gradient(to bottom, rgb(59, 130, 246) 0%, rgb(96, 165, 250) 30%, rgb(219, 234, 254) 60%, rgb(255, 255, 255) 100%)", // Blue gradient
-      checkout:
-        "linear-gradient(to bottom, rgb(16, 185, 129) 0%, rgb(52, 211, 153) 30%, rgb(209, 250, 229) 60%, rgb(255, 255, 255) 100%)", // Green gradient
-      offers:
-        "linear-gradient(to bottom, rgb(249, 115, 22) 0%, rgb(251, 146, 60) 30%, rgb(255, 237, 213) 60%, rgb(255, 255, 255) 100%)", // Orange gradient
-      dailyDeals:
-        "linear-gradient(to bottom, rgb(234, 179, 8) 0%, rgb(250, 204, 21) 30%, rgb(254, 243, 199) 60%, rgb(255, 255, 255) 100%)", // Yellow gradient
-      flashSale:
-        "linear-gradient(to bottom, rgb(239, 68, 68) 0%, rgb(248, 113, 113) 30%, rgb(254, 226, 226) 60%, rgb(255, 255, 255) 100%)", // Red gradient
-      vendor:
-        "linear-gradient(to bottom, rgb(124, 58, 237) 0%, rgb(167, 139, 250) 30%, rgb(237, 233, 254) 60%, rgb(255, 255, 255) 100%)", // Purple gradient
-      default:
-        "linear-gradient(to bottom, rgb(237, 233, 254) 0%, rgb(245, 243, 255) 50%, rgb(255, 255, 255) 100%)", // Light purple default
-    };
-
-    return pageGradients[currentPage] || pageGradients.default;
-  }, [currentCategoryId, currentPage, location.pathname]);
-
-  // Close menus when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setShowUserMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Measure top row height
   useEffect(() => {
@@ -298,11 +208,7 @@ const MobileHeader = () => {
   const headerContent = (
     <motion.header
       key="mobile-header" // Stable key to prevent re-mounting
-      className="fixed top-0 left-0 right-0 z-[9999] shadow-lg overflow-visible md:hidden"
-      style={{
-        background: headerBackground,
-        transition: "background 0.5s ease-in-out",
-      }}
+      className="fixed top-0 left-0 right-0 z-[9999] shadow-md overflow-visible md:hidden bg-[#E8E2FA] border-b border-purple-200"
       initial={false}
       animate={{
         y: isTopRowVisible ? 0 : -(topRowHeight + 12),
@@ -313,11 +219,11 @@ const MobileHeader = () => {
         damping: 30,
         mass: 0.8,
       }}>
-      <div className="px-4 py-3 overflow-visible">
-        {/* First Row: Logo and Actions */}
+      <div className="px-4 pt-3.5 pb-3 overflow-visible flex flex-col gap-2.5">
+        {/* First Row: Location & Actions */}
         <motion.div
           ref={topRowRef}
-          className="flex items-center justify-between gap-3 mb-3"
+          className="flex items-center justify-between gap-3"
           initial={false}
           animate={{
             opacity: isTopRowVisible ? 1 : 0,
@@ -331,53 +237,34 @@ const MobileHeader = () => {
           style={{
             pointerEvents: isTopRowVisible ? "auto" : "none",
           }}>
-          {/* Logo and Marketplace Badge */}
-          <div className="flex items-center gap-2 flex-shrink-0 overflow-visible relative z-[10001]">
-            <Link
-              to="/home"
-              className="flex items-center overflow-visible relative z-[10002]">
-              <div
-                ref={logoRef}
-                className="overflow-visible relative z-[10003]">
-                {appLogo.src ? (
-                  <img
-                    src={appLogo.src}
-                    alt={appLogo.alt}
-                    className="h-10 sm:h-12 w-auto object-contain origin-left relative z-[10004]"
-                    onError={(e) => {
-                      // Hide image if logo doesn't exist
-                      e.target.style.display = "none";
-                      // Show text fallback
-                      const parent = e.target.parentElement;
-                      if (
-                        parent &&
-                        !parent.querySelector(".logo-text-fallback")
-                      ) {
-                        const fallback = document.createElement("span");
-                        fallback.className =
-                          "logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg";
-                        fallback.textContent = "Raathi";
-                        parent.appendChild(fallback);
-                      }
-                    }}
-                  />
-                ) : (
-                  <span className="logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg">
-                    Raathi
-                  </span>
-                )}
-              </div>
-            </Link>
+          {/* Location details */}
+          <div className="flex flex-col text-left">
+            <div className="flex items-center gap-1 leading-none">
+              <span className="text-orange-500 font-bold text-lg">⚡</span>
+              <span className="text-gray-900 font-black text-sm tracking-wider uppercase">10 MINUTES</span>
+            </div>
+            <div className="flex items-center gap-0.5 text-gray-500 text-[10px] font-bold mt-1 ml-0.5">
+              <span>Police Quarters, Belgaum</span>
+              <span className="text-[8px] text-gray-400">▼</span>
+            </div>
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            {/* Moon Button */}
+            <button className="p-2 hover:bg-white/20 rounded-full transition-colors duration-200">
+              <FiMoon className="text-lg text-gray-800" />
+            </button>
+            {/* Profile Button */}
+            <Link to="/profile" className="p-2 hover:bg-white/20 rounded-full transition-colors duration-200 flex items-center">
+              <FiUser className="text-lg text-gray-800" />
+            </Link>
             {/* Cart Button */}
             <motion.button
               ref={cartRef}
               data-cart-icon
               onClick={toggleCart}
-              className="relative p-2.5 hover:bg-white/50 rounded-full transition-all duration-300"
+              className="relative p-2 hover:bg-white/20 rounded-full transition-all duration-300 flex items-center"
               animate={
                 cartAnimationTrigger > 0
                   ? {
@@ -386,24 +273,57 @@ const MobileHeader = () => {
                   : {}
               }
               transition={{ duration: 0.5, ease: "easeOut" }}>
-              <FiShoppingBag className="text-xl text-gray-700" />
+              <FiShoppingBag className="text-lg text-gray-800" />
               {itemCount > 0 && (
                 <motion.span
                   key={itemCount}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                  className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
                   style={{ backgroundColor: "#ffc101" }}>
                   {itemCount > 9 ? "9+" : itemCount}
                 </motion.span>
               )}
             </motion.button>
-
-
           </div>
         </motion.div>
 
+        {/* Second Row: Tab Navigation */}
+        <div className="flex items-center gap-3">
+          <Link to="/home" className="flex-1 py-2 px-3 rounded-full bg-[#E5DDFB] border border-purple-300 text-center font-black text-[#5B21B6] text-xs shadow-sm flex items-center justify-center">
+            ple
+          </Link>
+          <Link to="/categories" className="flex-1 py-2 px-3 rounded-full bg-white border border-gray-200 text-center font-bold text-gray-800 text-xs shadow-sm flex items-center justify-center">
+            Categories
+          </Link>
+          <Link to="/offers" className="flex-1 py-2 px-3 rounded-full bg-white border border-gray-200 text-center font-black text-emerald-700 text-xs shadow-sm flex items-center justify-center">
+            OFFER
+          </Link>
+        </div>
 
+        {/* Third Row: Search and Celebrate Badge */}
+        <div className="flex items-center gap-2.5">
+          {/* Search Box */}
+          <div 
+            onClick={() => navigate("/search")} 
+            className="flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white rounded-full border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            <FiSearch className="text-gray-400 text-base" />
+            <span className="text-gray-400 text-xs truncate">Search for "Earphones"</span>
+          </div>
+
+          {/* Celebrate Offers Badge */}
+          <Link 
+            to="/offers" 
+            className="flex items-center gap-1.5 px-3 py-1 bg-[#FFFBEB] border border-amber-300 rounded-xl shadow-sm hover:bg-[#FEF3C7] transition-colors shrink-0"
+          >
+            <div className="flex flex-col text-left leading-none">
+              <span className="text-[7px] font-extrabold text-[#B45309] uppercase tracking-wider">CELEBRATE</span>
+              <span className="text-[10px] font-bold text-gray-850">Offers</span>
+            </div>
+            <span className="text-sm">🎁</span>
+          </Link>
+        </div>
       </div>
     </motion.header>
   );
