@@ -431,10 +431,11 @@ router.post('/shipping/estimate', asyncHandler(async (req, res) => {
 router.get('/banners', asyncHandler(async (req, res) => {
     const { type } = req.query;
     const now = new Date();
+    const bufferTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24-hour buffer to handle timezone mismatches
     const filter = {
         isActive: true,
         $and: [
-            { $or: [{ startDate: null }, { startDate: { $exists: false } }, { startDate: { $lte: now } }] },
+            { $or: [{ startDate: null }, { startDate: { $exists: false } }, { startDate: { $lte: bufferTime } }] },
             { $or: [{ endDate: null }, { endDate: { $exists: false } }, { endDate: { $gte: now } }] }
         ]
     };

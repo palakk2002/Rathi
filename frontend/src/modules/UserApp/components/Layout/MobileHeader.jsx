@@ -237,15 +237,27 @@ const MobileHeader = () => {
           style={{
             pointerEvents: isTopRowVisible ? "auto" : "none",
           }}>
-          {/* Location details */}
-          <div className="flex flex-col text-left">
-            <div className="flex items-center gap-1 leading-none">
-              <span className="text-orange-500 font-bold text-lg">⚡</span>
-              <span className="text-gray-900 font-black text-sm tracking-wider uppercase">10 MINUTES</span>
-            </div>
-            <div className="flex items-center gap-0.5 text-gray-500 text-[10px] font-bold mt-1 ml-0.5">
-              <span>Police Quarters, Belgaum</span>
-              <span className="text-[8px] text-gray-400">▼</span>
+          {/* Logo and Location details */}
+          <div className="flex items-center gap-2.5 text-left">
+            <Link to="/home" className="flex-shrink-0 flex items-center">
+              <img
+                src={appLogo.src}
+                alt={appLogo.alt}
+                className="h-10 w-auto object-contain"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            </Link>
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-0.5 leading-none">
+                <span className="text-orange-500 font-bold text-sm">⚡</span>
+                <span className="text-gray-950 font-black text-xs tracking-wider uppercase">10 MINUTES</span>
+              </div>
+              <div className="flex items-center gap-0.5 text-gray-550 text-[9px] font-bold mt-1 ml-0.5">
+                <span>Police Quarters, Belgaum</span>
+                <span className="text-[7px] text-gray-400">▼</span>
+              </div>
             </div>
           </div>
 

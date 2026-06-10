@@ -312,7 +312,7 @@ const MobileHome = () => {
 
         const bannerSlides = allBanners
           .filter((banner) =>
-            ["home_slider", "hero"].includes(String(banner?.type || ""))
+            ["home_slider", "hero", "festival_offer", "banner"].includes(String(banner?.type || ""))
           )
           .sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
           .map((banner, index) => ({
@@ -324,14 +324,17 @@ const MobileHome = () => {
         setSlides(bannerSlides.length > 0 ? bannerSlides : DEFAULT_HERO_SLIDES);
 
         const banners = allBanners
-          .filter((banner) => String(banner?.type || "") === "promotional")
+          .filter((banner) =>
+            ["promotional", "festival_offer", "banner"].includes(String(banner?.type || "")) ||
+            !["home_slider", "hero", "side_banner"].includes(String(banner?.type || ""))
+          )
           .sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
           .map((banner, index) => ({
             id: normalizeId(banner._id || banner.id || `promo-banner-${index}`),
             title: banner.title || "Special Offer",
             subtitle: banner.subtitle || "Limited Time",
             description: banner.description || "",
-            discount: banner.description || "Shop Now",
+            discount: banner.discount || banner.description || "Shop Now",
             link: resolveBannerLink(banner),
             image: banner.image,
             type: banner.type || "promotional",
