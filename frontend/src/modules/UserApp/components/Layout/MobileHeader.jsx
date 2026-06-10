@@ -251,10 +251,6 @@ const MobileHeader = () => {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-1">
-            {/* Moon Button */}
-            <button className="p-2 hover:bg-white/20 rounded-full transition-colors duration-200">
-              <FiMoon className="text-lg text-gray-800" />
-            </button>
             {/* Profile Button */}
             <Link to="/profile" className="p-2 hover:bg-white/20 rounded-full transition-colors duration-200 flex items-center">
               <FiUser className="text-lg text-gray-800" />
@@ -291,7 +287,7 @@ const MobileHeader = () => {
         {/* Second Row: Tab Navigation */}
         <div className="flex items-center gap-3">
           <Link to="/home" className="flex-1 py-2 px-3 rounded-full bg-[#E5DDFB] border border-purple-300 text-center font-black text-[#5B21B6] text-xs shadow-sm flex items-center justify-center">
-            ple
+            raathi
           </Link>
           <Link to="/categories" className="flex-1 py-2 px-3 rounded-full bg-white border border-gray-200 text-center font-bold text-gray-800 text-xs shadow-sm flex items-center justify-center">
             Categories

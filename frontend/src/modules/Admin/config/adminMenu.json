@@ -51,6 +51,11 @@
     ]
   },
   {
+    "title": "Reviews",
+    "route": "/admin/reviews",
+    "children": []
+  },
+  {
     "title": "Delivery Management",
     "route": "/admin/delivery",
     "children": [

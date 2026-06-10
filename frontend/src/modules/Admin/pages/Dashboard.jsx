@@ -20,9 +20,12 @@ import {
   getCustomerGrowth,
   getRecentOrders,
 } from "../services/adminService";
+import { useReviewsStore } from "../../../shared/store/reviewsStore";
+import { FiMessageSquare, FiStar, FiTrash2, FiAlertTriangle, FiUserX } from "react-icons/fi";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { allReviews, blockedUsers } = useReviewsStore();
   const [period, setPeriod] = useState("month");
   const [loading, setLoading] = useState(true);
 
@@ -199,6 +202,73 @@ const Dashboard = () => {
 
       {/* Stats Cards */}
       <StatsCards stats={stats} />
+
+      {/* Review Moderation Overview */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold text-gray-800">Reviews & Moderation Overview</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+          {/* Card 1: Total Reviews */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-blue-50 text-blue-600 p-2.5 rounded-lg">
+                <FiMessageSquare size={18} />
+              </div>
+            </div>
+            <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Total Reviews</h3>
+            <p className="text-gray-800 text-2xl font-bold mt-1">{allReviews.length}</p>
+          </div>
+
+          {/* Card 2: Active Reviews */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-green-50 text-green-600 p-2.5 rounded-lg">
+                <FiStar size={18} />
+              </div>
+            </div>
+            <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Active Reviews</h3>
+            <p className="text-gray-800 text-2xl font-bold mt-1">
+              {allReviews.filter(r => r.status === 'active' || r.status === 'approved').length}
+            </p>
+          </div>
+
+          {/* Card 3: Removed Reviews */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-red-50 text-red-600 p-2.5 rounded-lg">
+                <FiTrash2 size={18} />
+              </div>
+            </div>
+            <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Removed Reviews</h3>
+            <p className="text-gray-800 text-2xl font-bold mt-1">
+              {allReviews.filter(r => r.status === 'removed').length}
+            </p>
+          </div>
+
+          {/* Card 4: Reported Reviews */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-amber-50 text-amber-600 p-2.5 rounded-lg">
+                <FiAlertTriangle size={18} />
+              </div>
+            </div>
+            <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Reported Reviews</h3>
+            <p className="text-gray-800 text-2xl font-bold mt-1">
+              {allReviews.filter(r => r.status === 'reported').length}
+            </p>
+          </div>
+
+          {/* Card 5: Blocked Users */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow relative overflow-hidden col-span-2 lg:col-span-1">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-orange-50 text-orange-600 p-2.5 rounded-lg">
+                <FiUserX size={18} />
+              </div>
+            </div>
+            <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Blocked Users</h3>
+            <p className="text-gray-800 text-2xl font-bold mt-1">{blockedUsers.length}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Main Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

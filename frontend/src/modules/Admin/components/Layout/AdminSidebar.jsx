@@ -23,6 +23,7 @@ import {
   FiChevronDown,
   FiX,
   FiUser,
+  FiStar,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "../../store/adminStore";
 import adminMenu from "../../config/adminMenu.json";
@@ -36,6 +37,7 @@ const iconMap = {
   Categories: FiGrid,
   Brands: FiTag,
   Customers: FiUsers,
+  Reviews: FiStar,
   "Delivery Management": FiTruck,
   "Offers & Sliders": FiImage,
   Banners: FiImage,

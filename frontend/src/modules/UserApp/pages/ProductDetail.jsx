@@ -180,9 +180,10 @@ const MobileProductDetail = () => {
     removeItem: removeFromWishlist,
     isInWishlist,
   } = useWishlistStore();
-  const { fetchReviews, sortReviews, addReview } = useReviewsStore();
+  const { fetchReviews, sortReviews, addReview, blockedUsers } = useReviewsStore();
   const { getAllOrders } = useOrderStore();
   const { user, isAuthenticated } = useAuthStore();
+  const isBlocked = isAuthenticated && user && (blockedUsers.includes(user.name) || blockedUsers.includes(user.email));
   const vendor = useMemo(() => {
     if (!product) return null;
     if (product.vendor?.id) return product.vendor;
@@ -462,6 +463,11 @@ const MobileProductDetail = () => {
   }, [isAuthenticated, user?.id, product?.id, getAllOrders]);
 
   const handleSubmitReview = async (reviewData) => {
+    if (isBlocked) {
+      toast.error("Your account has been temporarily blocked. Please contact support.");
+      return false;
+    }
+
     if (!eligibleDeliveredOrderId) {
       toast.error("You can review only after this product is delivered");
       return false;
@@ -470,6 +476,8 @@ const MobileProductDetail = () => {
     const ok = await addReview(product.id, {
       ...reviewData,
       orderId: eligibleDeliveredOrderId,
+      user: user?.name || 'User',
+      customerEmail: user?.email || 'user@example.com',
     });
     if (!ok) {
       toast.error("Unable to submit review");
@@ -758,7 +766,11 @@ const MobileProductDetail = () => {
                 {/* Write Review */}
                 {isAuthenticated && isMongoId(product?.id) && (
                   <div className="pt-6">
-                    {eligibleDeliveredOrderId ? (
+                    {isBlocked ? (
+                      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 font-semibold text-center shadow-xs">
+                        Your account has been temporarily blocked. Please contact support.
+                      </div>
+                    ) : eligibleDeliveredOrderId ? (
                       <ReviewForm
                         productId={product.id}
                         onSubmit={handleSubmitReview}
