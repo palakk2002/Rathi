@@ -2,6 +2,21 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from './constants';
 
+// Monkeypatch toast.error to silence annoying network connection errors globally
+const originalToastError = toast.error;
+toast.error = (message, options) => {
+  if (
+    !message ||
+    message === 'Network Error' ||
+    (typeof message === 'string' && message.toLowerCase().includes('network error')) ||
+    (typeof message === 'string' && message.toLowerCase().includes('failed to fetch'))
+  ) {
+    console.warn('Silenced network error toast:', message);
+    return null;
+  }
+  return originalToastError(message, options);
+};
+
 const AUTH_SCOPES = {
   admin: {
     prefix: '/admin',
@@ -188,11 +203,15 @@ api.interceptors.response.use(
       }
     }
 
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'Something went wrong';
-    toast.error(message);
+    if (!error.response) {
+      console.warn('Network connection error:', error.message);
+    } else {
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        'Something went wrong';
+      toast.error(message);
+    }
 
     if (error.response?.status === 401) {
       const activeScope = pathScope;
