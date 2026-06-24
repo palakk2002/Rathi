@@ -6,8 +6,16 @@ const errorHandler = (err, req, res, next) => {
 
     // Wrap non-ApiError instances
     if (!(error instanceof ApiError)) {
-        const statusCode = error.statusCode || 500;
-        const message = error.message || 'Internal Server Error';
+        let statusCode = error.statusCode || 500;
+        let message = error.message || 'Internal Server Error';
+        
+        // Catch MongoDB Atlas / DNS resolution connection errors
+        const errMsgStr = String(message).toLowerCase();
+        if (errMsgStr.includes('getaddrinfo') || errMsgStr.includes('enotfound') || error.code === 'ENOTFOUND') {
+            message = 'Database is temporarily unreachable. Please check your internet connection.';
+            statusCode = 503;
+        }
+        
         error = new ApiError(statusCode, message, error.errors || [], err.stack);
     }
 

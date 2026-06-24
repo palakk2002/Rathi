@@ -8,8 +8,12 @@ toast.error = (message, options) => {
   if (
     !message ||
     message === 'Network Error' ||
-    (typeof message === 'string' && message.toLowerCase().includes('network error')) ||
-    (typeof message === 'string' && message.toLowerCase().includes('failed to fetch'))
+    (typeof message === 'string' && (
+      message.toLowerCase().includes('network error') ||
+      message.toLowerCase().includes('failed to fetch') ||
+      message.toLowerCase().includes('getaddrinfo') ||
+      message.toLowerCase().includes('enotfound')
+    ))
   ) {
     console.warn('Silenced network error toast:', message);
     return null;

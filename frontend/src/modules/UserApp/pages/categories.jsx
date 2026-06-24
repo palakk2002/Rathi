@@ -578,7 +578,7 @@ const MobileCategories = () => {
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.2 }}
                         whileTap={{ scale: 0.95 }}
-                        className={`w-full px-2 py-1.5 text-left transition-all duration-200 relative ${isActive ? "bg-white shadow-sm" : "hover:bg-gray-100"
+                        className={`w-full px-2 py-3.5 text-left transition-all duration-200 relative ${isActive ? "bg-white shadow-sm" : "hover:bg-gray-100"
                           }`}
                         style={{ willChange: "transform" }}>
                         <div className="flex flex-col items-center gap-0.5">
