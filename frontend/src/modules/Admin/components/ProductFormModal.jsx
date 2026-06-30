@@ -1551,6 +1551,113 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                     </div>
                   </div>
 
+                  {/* Review Analytics & Warnings */}
+                  {isEdit && analytics && (
+                    <div className="border-t border-gray-200 pt-6 mt-6 space-y-4">
+                      <h3 className="text-lg font-bold text-gray-800">
+                        Review Analytics
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-center">
+                          <span className="text-sm text-gray-500 font-medium">Average Rating</span>
+                          <span className="text-3xl font-extrabold text-gray-800 mt-1">{analytics.averageRating} ★</span>
+                          <span className="text-xs text-gray-400 mt-0.5">Out of {analytics.totalReviews} reviews</span>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-center">
+                          <span className="text-sm text-gray-500 font-medium">Positive / Negative %</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-green-600 font-bold text-lg">{analytics.positiveReviewPercentage}% Positive</span>
+                            <span className="text-gray-300">|</span>
+                            <span className="text-red-600 font-bold text-lg">{analytics.negativeReviewPercentage}% Negative</span>
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-center">
+                          <span className="text-sm text-gray-500 font-medium">Review Health</span>
+                          <span className={`inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-bold w-fit mt-1.5 ${
+                            analytics.reviewHealth === 'Excellent' ? 'bg-green-100 text-green-800' :
+                            analytics.reviewHealth === 'Good' ? 'bg-emerald-100 text-emerald-800' :
+                            analytics.reviewHealth === 'Average' ? 'bg-blue-100 text-blue-800' :
+                            analytics.reviewHealth === 'Poor' ? 'bg-orange-100 text-orange-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {analytics.reviewHealth.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Rating Distribution */}
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
+                        <span className="text-sm font-semibold text-gray-700">Rating Distribution</span>
+                        <div className="space-y-1.5">
+                          {[5, 4, 3, 2, 1].map((stars) => {
+                            const count = analytics.ratingDistribution?.[stars] || 0;
+                            const pct = analytics.totalReviews > 0 ? (count / analytics.totalReviews) * 100 : 0;
+                            return (
+                              <div key={stars} className="flex items-center text-xs gap-3">
+                                <span className="w-8 text-gray-600 font-medium">{stars} Star</span>
+                                <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
+                                  <div className="bg-yellow-400 h-full" style={{ width: `${pct}%` }}></div>
+                                </div>
+                                <span className="w-8 text-right text-gray-500">{count}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Warnings and Remove/Restore Actions */}
+                      {productDetails && productDetails.isReviewRemoved ? (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div>
+                            <h4 className="text-red-800 font-bold text-sm">Product removed from visibility due to poor customer reviews</h4>
+                            <p className="text-xs text-red-600 mt-1">Reason: {productDetails.removedReason}</p>
+                            {productDetails.removedAt && (
+                              <p className="text-xs text-gray-400 mt-0.5">Removed on {new Date(productDetails.removedAt).toLocaleString()}</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await restoreProductByReview(productId);
+                                toast.success("Product has been restored to visibility");
+                                loadAnalytics();
+                                if (onSuccess) onSuccess();
+                                onClose();
+                              } catch (err) {
+                                // Handled in axios interceptors
+                              }
+                            }}
+                            className="bg-green-600 text-white text-xs px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition-colors whitespace-nowrap"
+                          >
+                            Restore Product
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          {(analytics.averageRating < 2.5 || analytics.negativeReviewPercentage > 60) && analytics.totalReviews >= 15 && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div>
+                                <h4 className="text-yellow-800 font-bold text-sm">This product has poor customer feedback.</h4>
+                                <p className="text-xs text-yellow-600 mt-0.5">Average rating is {analytics.averageRating} and negative feedback is {analytics.negativeReviewPercentage}%.</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowRemovalModal(true);
+                                }}
+                                className="bg-red-600 text-white text-xs px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors whitespace-nowrap pointer-events-auto"
+                              >
+                                Remove Product
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                     <Button
@@ -1572,6 +1679,55 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
               </div>
             </motion.div>
           </motion.div>
+
+          {/* Remove Reason Modal Overlays */}
+          {showRemovalModal && (
+            <div className="fixed inset-0 bg-black/60 z-[11000] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                <h3 className="text-lg font-extrabold text-gray-800">Confirm Product Removal</h3>
+                <p className="text-sm text-gray-500">Provide a required removal reason below. The product will be hidden from customer visibility.</p>
+                <textarea
+                  className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  rows={4}
+                  placeholder="Reason for removal (minimum 5 characters)..."
+                  value={removalReason}
+                  onChange={(e) => setRemovalReason(e.target.value)}
+                />
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRemovalModal(false);
+                      setRemovalReason("");
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={removalReason.trim().length < 5}
+                    onClick={async () => {
+                      try {
+                        await removeProductByReview(productId, removalReason);
+                        toast.success("Product has been removed from customer visibility");
+                        setShowRemovalModal(false);
+                        setRemovalReason("");
+                        loadAnalytics();
+                        if (onSuccess) onSuccess();
+                        onClose();
+                      } catch (err) {
+                        // Handled in axios interceptor
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors font-semibold disabled:opacity-50"
+                  >
+                    Confirm Removal
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </AnimatePresence>
@@ -1579,3 +1735,4 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
 };
 
 export default ProductFormModal;
+

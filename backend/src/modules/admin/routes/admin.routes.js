@@ -30,6 +30,7 @@ import {
     brandIdParamSchema,
     createBrandSchema,
     updateBrandSchema,
+    removeProductSchema,
 } from '../validators/catalog.validator.js';
 import {
     customerListQuerySchema,
@@ -93,6 +94,9 @@ router.delete('/orders/:id', ...adminAuth, orderController.deleteOrder);
 router.get('/products', ...adminAuth, catalogController.getAllProducts);
 router.get('/products/tax-pricing-rules', ...adminAuth, catalogController.getTaxPricingRules);
 router.get('/products/:id', ...adminAuth, catalogController.getProductById);
+router.get('/products/:id/review-analytics', ...adminAuth, catalogController.getProductReviewAnalytics);
+router.patch('/products/:id/review-remove', ...adminAuth, validate(removeProductSchema), catalogController.removeProductByReview);
+router.patch('/products/:id/review-restore', ...adminAuth, catalogController.restoreProductByReview);
 router.post('/products', ...adminAuth, validate(createProductSchema), catalogController.createProduct);
 router.put('/products/tax-pricing-rules', ...adminAuth, validate(taxPricingRulesSchema), catalogController.updateTaxPricingRules);
 

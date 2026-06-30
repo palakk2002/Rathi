@@ -63,6 +63,20 @@ const productSchema = new mongoose.Schema(
         relatedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
         faqs: [{ question: String, answer: String }],
         tags: [String],
+        // Review Removal Feature fields
+        isReviewRemoved: { type: Boolean, default: false, index: true },
+        removedReason: { type: String, default: '' },
+        removedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+        removedAt: { type: Date },
+        reviewHealth: { type: String, default: 'Average' },
+        averageRating: { type: Number, default: 0 },
+        negativeReviewPercentage: { type: Number, default: 0 },
+        reviewRemovalHistory: [{
+            action: { type: String, enum: ['remove', 'restore'] },
+            reason: String,
+            performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+            performedAt: { type: Date, default: Date.now }
+        }]
     },
     { timestamps: true }
 );

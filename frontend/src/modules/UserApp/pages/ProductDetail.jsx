@@ -694,30 +694,6 @@ const MobileProductDetail = () => {
 
                 {/* ACTION BUTTONS (MOBILE & DESKTOP INLINE) */}
                 <div className="flex flex-col gap-3 py-4">
-                  {isInCart ? (
-                    <button
-                      onClick={handleRemoveFromCart}
-                      className="w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100">
-                      <FiTrash2 className="text-xl" />
-                      <span>Remove from Cart</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={product.stock === "out_of_stock"}
-                      className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                        : "border-2 border-primary-600 text-primary-600 hover:bg-primary-50 bg-white"
-                        }`}>
-                      <FiShoppingBag className="text-xl" />
-                      <span>
-                        {product.stock === "out_of_stock"
-                          ? "Out of Stock"
-                          : "Add to Cart"}
-                      </span>
-                    </button>
-                  )}
-
                   <button
                     onClick={() => {
                       if (!isInCart) {

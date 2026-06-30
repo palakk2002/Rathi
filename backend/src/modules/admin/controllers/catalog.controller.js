@@ -279,6 +279,161 @@ export const getProductById = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, product, 'Product fetched.'));
 });
 
+// GET /api/admin/products/:id/review-analytics
+export const getProductReviewAnalytics = asyncHandler(async (req, res) => {
+    const productId = req.params.id;
+    const product = await Product.findById(productId).select('_id');
+    if (!product) throw new ApiError(404, 'Product not found.');
+
+    const ReviewModel = Product.db.model('Review');
+    const reviews = await ReviewModel.find({ productId, isApproved: true, isHidden: { $ne: true } }).lean();
+
+    const totalReviews = reviews.length;
+    const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let ratingSum = 0;
+
+    reviews.forEach((r) => {
+        const rating = Math.min(5, Math.max(1, Math.round(r.rating || 0)));
+        ratingDistribution[rating] = (ratingDistribution[rating] || 0) + 1;
+        ratingSum += r.rating;
+    });
+
+    const averageRating = totalReviews > 0 ? Number((ratingSum / totalReviews).toFixed(2)) : 0;
+    
+    // Ratings 1 and 2 are considered negative.
+    const negativeReviewsCount = ratingDistribution[1] + ratingDistribution[2];
+    const positiveReviewsCount = ratingDistribution[3] + ratingDistribution[4] + ratingDistribution[5];
+
+    const negativeReviewPercentage = totalReviews > 0 ? Number(((negativeReviewsCount / totalReviews) * 100).toFixed(2)) : 0;
+    const positiveReviewPercentage = totalReviews > 0 ? Number(((positiveReviewsCount / totalReviews) * 100).toFixed(2)) : 0;
+
+    let reviewHealth = 'Average';
+    if (averageRating >= 4.5) reviewHealth = 'Excellent';
+    else if (averageRating >= 4.0) reviewHealth = 'Good';
+    else if (averageRating >= 3.0) reviewHealth = 'Average';
+    else if (averageRating >= 2.5) reviewHealth = 'Poor';
+    else reviewHealth = 'Critical';
+
+    res.status(200).json(
+        new ApiResponse(200, {
+            averageRating,
+            totalReviews,
+            totalRatings: totalReviews,
+            ratingDistribution,
+            positiveReviewPercentage,
+            negativeReviewPercentage,
+            reviewHealth,
+        }, 'Review analytics fetched.')
+    );
+});
+
+// PATCH /api/admin/products/:id/review-remove
+export const removeProductByReview = asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    const product = await Product.findById(req.params.id);
+    if (!product) throw new ApiError(404, 'Product not found.');
+
+    const ReviewModel = Product.db.model('Review');
+    const reviews = await ReviewModel.find({ productId: product._id, isApproved: true, isHidden: { $ne: true } }).lean();
+
+    const totalReviews = reviews.length;
+    const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let ratingSum = 0;
+    reviews.forEach((r) => {
+        const rating = Math.min(5, Math.max(1, Math.round(r.rating || 0)));
+        ratingDistribution[rating] = (ratingDistribution[rating] || 0) + 1;
+        ratingSum += r.rating;
+    });
+
+    const averageRating = totalReviews > 0 ? ratingSum / totalReviews : 0;
+    const negativeReviewsCount = ratingDistribution[1] + ratingDistribution[2];
+    const negativeReviewPercentage = totalReviews > 0 ? (negativeReviewsCount / totalReviews) * 100 : 0;
+
+    // Check conditions: Average Rating < 2.5 OR Negative Reviews > 60%, AND Minimum Reviews >= 15
+    const isUnderThreshold = averageRating < 2.5 || negativeReviewPercentage > 60;
+    if (totalReviews < 15 || !isUnderThreshold) {
+        throw new ApiError(400, 'Product does not meet the criteria for manual review removal (minimum 15 reviews, and average rating < 2.5 or > 60% negative reviews).');
+    }
+
+    let reviewHealth = 'Average';
+    if (averageRating >= 4.5) reviewHealth = 'Excellent';
+    else if (averageRating >= 4.0) reviewHealth = 'Good';
+    else if (averageRating >= 3.0) reviewHealth = 'Average';
+    else if (averageRating >= 2.5) reviewHealth = 'Poor';
+    else reviewHealth = 'Critical';
+
+    product.isReviewRemoved = true;
+    product.removedReason = reason;
+    product.removedBy = req.user.id;
+    product.removedAt = new Date();
+    product.reviewHealth = reviewHealth;
+    product.averageRating = Number(averageRating.toFixed(2));
+    product.negativeReviewPercentage = Number(negativeReviewPercentage.toFixed(2));
+    product.reviewRemovalHistory.push({
+        action: 'remove',
+        reason,
+        performedBy: req.user.id,
+        performedAt: new Date(),
+    });
+
+    await product.save();
+
+    // Create system notification for vendor
+    try {
+        const NotificationModel = Product.db.model('Notification');
+        await NotificationModel.create({
+            recipientId: product.vendorId,
+            recipientType: 'vendor',
+            title: 'Product Removed Due to Poor Reviews',
+            message: `Your product "${product.name}" has been removed from customer visibility due to poor customer feedback. Reason: ${reason}`,
+            type: 'system',
+            data: { productId: String(product._id) }
+        });
+    } catch (notifErr) {
+        // Log notification error but do not block response
+        console.error('Error creating vendor notification on review removal:', notifErr);
+    }
+
+    res.status(200).json(new ApiResponse(200, product, 'Product has been removed from visibility.'));
+});
+
+// PATCH /api/admin/products/:id/review-restore
+export const restoreProductByReview = asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id);
+    if (!product) throw new ApiError(404, 'Product not found.');
+
+    product.isReviewRemoved = false;
+    product.removedReason = '';
+    product.removedBy = undefined;
+    product.removedAt = undefined;
+    product.reviewRemovalHistory.push({
+        action: 'restore',
+        reason: 'Restored by administrator.',
+        performedBy: req.user.id,
+        performedAt: new Date(),
+    });
+
+    await product.save();
+
+    // Create system notification for vendor
+    try {
+        const NotificationModel = Product.db.model('Notification');
+        await NotificationModel.create({
+            recipientId: product.vendorId,
+            recipientType: 'vendor',
+            title: 'Product Restored',
+            message: `Your product "${product.name}" has been restored and is now visible to customers.`,
+            type: 'system',
+            data: { productId: String(product._id) }
+        });
+    } catch (notifErr) {
+        console.error('Error creating vendor notification on restore:', notifErr);
+    }
+
+    res.status(200).json(new ApiResponse(200, product, 'Product has been restored to visibility.'));
+});
+
+
 // POST /api/admin/products
 export const createProduct = asyncHandler(async (req, res) => {
     const { name, stockQuantity = 0, stock, ...rest } = req.body;

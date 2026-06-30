@@ -556,11 +556,11 @@ const MobileCategories = () => {
             {/* Left Panel - Vertical Category Sidebar */}
             <div
               ref={categoryListRef}
-              className="w-16 md:w-20 bg-gray-50 border-r border-gray-200 overflow-y-auto scrollbar-hide flex-shrink-0"
+              className="w-20 md:w-24 bg-gray-50 border-r border-gray-200 overflow-y-auto scrollbar-hide flex-shrink-0"
               style={{
                 maxHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
               }}>
-              <div className="pb-[190px]">
+              <div className="pb-[190px] flex flex-col gap-4 pt-2">
                 {rootCategories.map((category) => {
                   const isActive =
                     normalizeId(category.id) === normalizeId(selectedCategoryId);
@@ -578,12 +578,12 @@ const MobileCategories = () => {
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.2 }}
                         whileTap={{ scale: 0.95 }}
-                        className={`w-full px-2 py-3.5 text-left transition-all duration-200 relative ${isActive ? "bg-white shadow-sm" : "hover:bg-gray-100"
+                        className={`w-full px-2 py-2 text-left transition-all duration-200 relative ${isActive ? "bg-white shadow-sm" : "hover:bg-gray-100"
                           }`}
                         style={{ willChange: "transform" }}>
-                        <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex flex-col items-center gap-1">
                           <div
-                            className={`w-8 h-8 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 transition-all duration-200 ${isActive
+                            className={`w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 transition-all duration-200 ${isActive
                               ? "ring-2 ring-primary-500 ring-offset-1 scale-105"
                               : ""
                               }`}
@@ -600,7 +600,7 @@ const MobileCategories = () => {
                             />
                           </div>
                           <span
-                            className={`text-[9px] font-semibold text-center leading-tight transition-colors ${isActive ? "text-primary-600" : "text-gray-700"
+                            className={`text-[10px] md:text-[11px] font-semibold text-center leading-tight transition-colors ${isActive ? "text-primary-600" : "text-gray-700"
                               }`}>
                             {category.name}
                           </span>

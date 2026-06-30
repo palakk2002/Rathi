@@ -146,3 +146,8 @@ export const updateBrandSchema = Joi.object({
     website: Joi.string().trim().uri().allow('').optional(),
     isActive: Joi.boolean().optional(),
 }).min(1);
+
+export const removeProductSchema = Joi.object({
+    reason: Joi.string().trim().min(5).max(500).required(),
+});
+

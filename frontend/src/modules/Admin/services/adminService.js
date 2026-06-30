@@ -75,6 +75,15 @@ export const updateProduct = (id, data) =>
 export const deleteProduct = (id) =>
     api.delete(`/admin/products/${id}`);
 
+export const getProductReviewAnalytics = (id) =>
+    api.get(`/admin/products/${id}/review-analytics`);
+
+export const removeProductByReview = (id, reason) =>
+    api.patch(`/admin/products/${id}/review-remove`, { reason });
+
+export const restoreProductByReview = (id) =>
+    api.patch(`/admin/products/${id}/review-restore`);
+
 export const getTaxPricingRules = () =>
     api.get('/admin/products/tax-pricing-rules');
 

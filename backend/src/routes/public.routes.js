@@ -106,7 +106,7 @@ const listProducts = asyncHandler(async (req, res) => {
         minRating
     } = req.query;
     const skip = (page - 1) * limit;
-    const filter = { isActive: true };
+    const filter = { isActive: true, isReviewRemoved: { $ne: true } };
 
     if (category) {
         const categoryId = String(category);
@@ -136,7 +136,7 @@ router.get('/products', listProducts);
 
 // GET /api/products/flash-sale
 router.get('/flash-sale', asyncHandler(async (req, res) => {
-    const products = await Product.find({ isActive: true, flashSale: true }).limit(20);
+    const products = await Product.find({ isActive: true, flashSale: true, isReviewRemoved: { $ne: true } }).limit(20);
     res.status(200).json(new ApiResponse(200, products, 'Flash sale products.'));
 }));
 
@@ -157,7 +157,7 @@ router.get('/new-arrivals', asyncHandler(async (req, res) => {
     const numericLimit = Math.max(Number(limit) || 20, 1);
     const skip = (numericPage - 1) * numericLimit;
 
-    const filter = { isActive: true, isNewArrival: true };
+    const filter = { isActive: true, isNewArrival: true, isReviewRemoved: { $ne: true } };
     const searchQuery = String(search || q || '').trim();
     if (searchQuery) filter.$text = { $search: searchQuery };
     if (minPrice || maxPrice) {
@@ -200,7 +200,7 @@ router.get('/new-arrivals', asyncHandler(async (req, res) => {
 
 // GET /api/products/popular
 router.get('/popular', asyncHandler(async (req, res) => {
-    const products = await Product.find({ isActive: true }).sort({ reviewCount: -1, rating: -1 }).limit(10);
+    const products = await Product.find({ isActive: true, isReviewRemoved: { $ne: true } }).sort({ reviewCount: -1, rating: -1 }).limit(10);
     res.status(200).json(new ApiResponse(200, products, 'Popular products.'));
 }));
 
@@ -208,13 +208,16 @@ router.get('/popular', asyncHandler(async (req, res) => {
 router.get('/similar/:id', asyncHandler(async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) throw new ApiError(404, 'Product not found.');
-    const similar = await Product.find({ isActive: true, _id: { $ne: product._id }, categoryId: product.categoryId }).limit(6);
+    const similar = await Product.find({ isActive: true, isReviewRemoved: { $ne: true }, _id: { $ne: product._id }, categoryId: product.categoryId }).limit(6);
     res.status(200).json(new ApiResponse(200, similar, 'Similar products.'));
 }));
 
 const getProductDetail = asyncHandler(async (req, res) => {
     const product = await Product.findById(req.params.id).populate('categoryId', 'name').populate('brandId', 'name').populate('vendorId', 'storeName storeLogo rating');
     if (!product) throw new ApiError(404, 'Product not found.');
+    if (product.isReviewRemoved) {
+        throw new ApiError(400, 'This product is currently unavailable.');
+    }
     res.status(200).json(new ApiResponse(200, product, 'Product detail.'));
 });
 
@@ -298,7 +301,7 @@ router.get('/vendors/:id/products', asyncHandler(async (req, res) => {
     }).select('_id');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
-    const filter = { isActive: true, vendorId: req.params.id };
+    const filter = { isActive: true, vendorId: req.params.id, isReviewRemoved: { $ne: true } };
     const products = await Product.find(filter)
         .populate('categoryId', 'name')
         .populate('brandId', 'name')

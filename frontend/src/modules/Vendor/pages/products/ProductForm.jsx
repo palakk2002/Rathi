@@ -176,6 +176,12 @@ const ProductForm = () => {
       seoDescription: product.seoDescription || "",
       relatedProducts: product.relatedProducts || [],
       faqs: Array.isArray(product.faqs) ? product.faqs : [],
+      isReviewRemoved: product.isReviewRemoved || false,
+      removedReason: product.removedReason || "",
+      removedAt: product.removedAt || null,
+      averageRating: product.averageRating || 0,
+      negativeReviewPercentage: product.negativeReviewPercentage || 0,
+      reviewHealth: product.reviewHealth || "Average",
     });
   };
 
@@ -513,6 +519,46 @@ const ProductForm = () => {
       <form
         onSubmit={handleSubmit}
         className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 space-y-4">
+        {formData.isReviewRemoved && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="bg-red-600 text-white text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
+                Removed Due To Poor Reviews
+              </span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                formData.reviewHealth === 'Excellent' ? 'bg-green-100 text-green-800' :
+                formData.reviewHealth === 'Good' ? 'bg-emerald-100 text-emerald-800' :
+                formData.reviewHealth === 'Average' ? 'bg-blue-100 text-blue-800' :
+                formData.reviewHealth === 'Poor' ? 'bg-orange-100 text-orange-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                HEALTH: {formData.reviewHealth.toUpperCase()}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm bg-white p-3 rounded-lg border border-red-100">
+              <div>
+                <span className="text-gray-500 block text-xs">Average Rating</span>
+                <span className="font-bold text-gray-800">{formData.averageRating} ★</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-xs">Negative Review %</span>
+                <span className="font-bold text-red-600">{formData.negativeReviewPercentage}%</span>
+              </div>
+              {formData.removedAt && (
+                <div>
+                  <span className="text-gray-500 block text-xs">Removed Date</span>
+                  <span className="font-medium text-gray-800">{new Date(formData.removedAt).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+            {formData.removedReason && (
+              <div className="text-sm bg-red-100/50 p-3 rounded-lg text-red-800">
+                <span className="font-semibold block text-xs text-red-700">Removal Reason</span>
+                {formData.removedReason}
+              </div>
+            )}
+          </div>
+        )}
         {/* Basic Information */}
         <div>
           <h2 className="text-base font-bold text-gray-800 mb-2">

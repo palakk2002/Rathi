@@ -100,18 +100,27 @@ const ManageProducts = () => {
       key: "stock",
       label: "Status",
       sortable: true,
-      render: (value) => (
-        <Badge
-          variant={
-            value === "in_stock"
-              ? "success"
-              : value === "low_stock"
-                ? "warning"
-                : "error"
-          }>
-          {value?.replace("_", " ").toUpperCase() || "N/A"}
-        </Badge>
-      ),
+      render: (value, row) => {
+        if (row.isReviewRemoved) {
+          return (
+            <Badge variant="error">
+              REVIEW REMOVED
+            </Badge>
+          );
+        }
+        return (
+          <Badge
+            variant={
+              value === "in_stock"
+                ? "success"
+                : value === "low_stock"
+                  ? "warning"
+                  : "error"
+            }>
+            {value?.replace("_", " ").toUpperCase() || "N/A"}
+          </Badge>
+        );
+      },
     },
     {
       key: "actions",
