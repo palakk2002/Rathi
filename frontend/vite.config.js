@@ -3,7 +3,18 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'force-close-build',
+      closeBundle() {
+        // Forcefully exit the process once the build is successfully completed
+        setTimeout(() => {
+          process.exit(0);
+        }, 200);
+      }
+    }
+  ],
   resolve: {
     alias: {
       "@modules": path.resolve(__dirname, "./src/modules"),
