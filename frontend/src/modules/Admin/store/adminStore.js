@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { adminLogin as apiLogin } from '../services/adminService';
 import api from '../../../shared/utils/api';
+import { registerFCMToken } from '../../../services/pushNotificationService';
 
 export const useAdminAuthStore = create(
   persist(
@@ -22,6 +23,9 @@ export const useAdminAuthStore = create(
           // Store token under 'adminToken' key (used by adminService interceptor)
           localStorage.setItem('adminToken', accessToken);
           localStorage.setItem('adminRefreshToken', refreshToken);
+
+          // Register FCM token
+          registerFCMToken(true).catch((err) => console.log('Admin FCM registration failed:', err));
 
           set({
             admin,

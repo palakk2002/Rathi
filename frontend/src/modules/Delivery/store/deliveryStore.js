@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../../../shared/utils/api';
+import { registerFCMToken } from '../../../services/pushNotificationService';
 
 const normalizeDeliveryBoy = (raw) => {
   if (!raw) return null;
@@ -174,6 +175,9 @@ export const useDeliveryAuthStore = create(
 
           localStorage.setItem('delivery-token', accessToken);
           localStorage.setItem('delivery-refresh-token', refreshToken);
+
+          // Register FCM token
+          registerFCMToken(true).catch((err) => console.log('Delivery FCM registration failed:', err));
 
           let enriched = loginDeliveryBoy;
           try {

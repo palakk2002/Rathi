@@ -1,11 +1,31 @@
 import Notification from '../models/Notification.model.js';
+import { sendNotificationToUser } from '../utils/pushNotificationHelper.js';
 
 /**
  * Create a notification for a user/vendor/delivery/admin
  * @param {Object} options - { recipientId, recipientType, title, message, type, data }
  */
 export const createNotification = async ({ recipientId, recipientType, title, message, type = 'system', data = {} }) => {
-    return Notification.create({ recipientId, recipientType, title, message, type, data });
+    const notification = await Notification.create({ recipientId, recipientType, title, message, type, data });
+    
+    // Map recipientType ('user', 'vendor', 'delivery', 'admin') to roles used in fcmToken/auth ('customer', 'vendor', 'delivery', 'admin')
+    let role = recipientType;
+    if (recipientType === 'user') {
+        role = 'customer';
+    }
+
+    // Trigger push notification asynchronously (so it doesn't block the main thread/response)
+    sendNotificationToUser(recipientId, role, {
+        title,
+        body: message,
+        data: {
+            ...data,
+            notificationId: notification._id.toString(),
+            type,
+        }
+    }).catch((err) => console.error('[Push Notification Service Error]:', err));
+
+    return notification;
 };
 
 /**

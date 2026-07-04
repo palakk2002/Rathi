@@ -5,6 +5,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { useEffect } from "react";
+import { initializePushNotifications, setupForegroundNotificationHandler } from "./services/pushNotificationService";
 
 import CartDrawer from "./shared/components/Cart/CartDrawer";
 import ProtectedRoute from "./shared/components/Auth/ProtectedRoute";
@@ -630,6 +632,13 @@ const AppRoutes = () => {
 };
 
 function App() {
+  useEffect(() => {
+    initializePushNotifications();
+    setupForegroundNotificationHandler((payload) => {
+      console.log('App received foreground notification:', payload);
+    });
+  }, []);
+
   return (
     <ErrorBoundary>
       <Router

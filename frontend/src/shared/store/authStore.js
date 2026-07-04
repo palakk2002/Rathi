@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../utils/api';
+import { registerFCMToken } from '../../services/pushNotificationService';
 
 export const useAuthStore = create(
   persist(
@@ -38,6 +39,9 @@ export const useAuthStore = create(
 
           localStorage.setItem('token', accessToken);
           localStorage.setItem('refresh-token', refreshToken);
+
+          // Register FCM token
+          registerFCMToken(true).catch((err) => console.log('FCM registration failed:', err));
 
           return { success: true, user };
         } catch (error) {
@@ -118,6 +122,10 @@ export const useAuthStore = create(
 
           localStorage.setItem('token', accessToken);
           localStorage.setItem('refresh-token', refreshToken);
+
+          // Register FCM token
+          registerFCMToken(true).catch((err) => console.log('FCM registration failed:', err));
+
           return { success: true, user };
         } catch (error) {
           set({ isLoading: false });

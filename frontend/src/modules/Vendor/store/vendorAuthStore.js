@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import api from "../../../shared/utils/api";
+import { registerFCMToken } from "../../../services/pushNotificationService";
 import {
   registerVendor,
   updateVendorProfile,
@@ -46,6 +47,9 @@ export const useVendorAuthStore = create(
           // Store token for vendor API requests
           localStorage.setItem("vendor-token", accessToken);
           localStorage.setItem("vendor-refresh-token", refreshToken);
+
+          // Register FCM token
+          registerFCMToken(true).catch((err) => console.log('Vendor FCM registration failed:', err));
 
           return { success: true, vendor };
         } catch (error) {
