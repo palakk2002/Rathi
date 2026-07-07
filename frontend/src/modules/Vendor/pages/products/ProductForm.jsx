@@ -6,7 +6,7 @@ import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { uploadVendorImage, uploadVendorImages } from "../../services/vendorService";
+import { uploadVendorImage, uploadVendorImages, getEffectiveGstPreview } from "../../services/vendorService";
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import toast from "react-hot-toast";
@@ -74,11 +74,36 @@ const ProductForm = () => {
     relatedProducts: [],
     faqs: [],
   });
+
+  const [gstPreview, setGstPreview] = useState(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
     sizes: "",
     colors: "",
   });
+
+  useEffect(() => {
+    const fetchGst = async () => {
+      if (!formData.categoryId || !formData.price) {
+        setGstPreview(null);
+        return;
+      }
+      try {
+        const res = await getEffectiveGstPreview(
+          formData.categoryId,
+          formData.price,
+          formData.taxIncluded,
+          isEdit ? id : ""
+        );
+        if (res?.data) {
+          setGstPreview(res.data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchGst();
+  }, [formData.categoryId, formData.price, formData.taxIncluded, isEdit, id]);
   const variantCombinations = useMemo(
     () =>
       buildVariantCombinations(
@@ -677,6 +702,38 @@ const ProductForm = () => {
               />
             </div>
           </div>
+          {gstPreview && gstPreview.effective && (
+            <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <FiInfo className="text-sm" /> Applied GST Configuration (Read-only)
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500 text-xs block font-semibold">GST Rate</span>
+                  <span className="font-extrabold text-gray-900">{gstPreview.effective.rate}%</span>
+                  <span className="text-[10px] text-primary-600 block capitalize">Source: {gstPreview.effective.ruleType}</span>
+                </div>
+                {gstPreview.effective.hsnCode && (
+                  <div>
+                    <span className="text-gray-500 text-xs block font-semibold">HSN/SAC Code</span>
+                    <span className="font-mono font-bold text-gray-800">{gstPreview.effective.hsnCode}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-500 text-xs block font-semibold">Base Price</span>
+                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.basePrice).toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 text-xs block font-semibold">GST Amount</span>
+                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.gstAmount).toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 text-xs block font-semibold text-primary-700">Final Price</span>
+                  <span className="font-black text-primary-700">Rs. {parseFloat(gstPreview.calculations.totalPrice).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Product Media */}

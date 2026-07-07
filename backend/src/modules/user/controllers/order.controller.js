@@ -12,6 +12,9 @@ import { generateTrackingNumber } from '../../../utils/generateTrackingNumber.js
 import mongoose from 'mongoose';
 import { createNotification } from '../../../services/notification.service.js';
 import { calculateVendorShippingForGroups } from '../../../services/vendorShipping.service.js';
+import { calculateOrderGst } from '../../../services/gst.service.js';
+import { updateStatsForUser } from '../../../services/codStats.service.js';
+import CodStats from '../../../models/CodStats.model.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
 const normalizeAxisName = (value) =>
@@ -198,6 +201,15 @@ export const placeOrder = asyncHandler(async (req, res) => {
     const { items, shippingAddress, paymentMethod, couponCode, shippingOption } = req.body;
     const normalizedPaymentMethod = paymentMethod === 'cash' ? 'cod' : paymentMethod;
     const userId = req.user?.id || null;
+
+    // Check COD blacklist rules
+    if (normalizedPaymentMethod === 'cod' && userId) {
+        const stats = await CodStats.findOne({ userId });
+        if (stats && stats.isCodBlacklisted) {
+            throw new ApiError(403, 'Cash on Delivery is currently unavailable for your account due to high cancellation rates. Please use online payment methods to place your order.');
+        }
+    }
+
     const rawIdempotencyKey = String(req.get('x-idempotency-key') || '').trim();
     const idempotencyKey = rawIdempotencyKey || null;
     const normalizedGuestEmail = String(shippingAddress?.email || '').trim().toLowerCase();
@@ -321,21 +333,51 @@ export const placeOrder = asyncHandler(async (req, res) => {
         couponType: appliedCoupon?.type || null,
     });
 
-    // 4. Calculate tax (18%)
-    const tax = parseFloat(((subtotal - couponDiscount) * 0.18).toFixed(2));
+    // 4. Calculate GST using centralized GST engine
+    const gstResult = await calculateOrderGst(enrichedItems);
+    
+    // Apply discount proportionally or keep subtotal intact. 
+    // GST should ideally be calculated on discounted taxable amount. Let's compute proportion.
+    const discountRatio = subtotal > 0 ? (couponDiscount / subtotal) : 0;
+    
+    let totalTax = 0;
+    // Inject the gstSnapshot with discount adjustment
+    gstResult.items.forEach(item => {
+        const itemSubtotal = item.price * item.quantity;
+        const itemDiscount = itemSubtotal * discountRatio;
+        const taxableAmount = Math.max(0, itemSubtotal - itemDiscount);
+        
+        // Recalculate GST based on final discounted taxable amount
+        const pricePerUnitAfterDiscount = taxableAmount / item.quantity;
+        const { basePrice, gstAmount } = gstResult.items.find(x => x.productId.toString() === item.productId.toString()).gstSnapshot; // get rate
+        const rate = item.gstSnapshot.rate;
+        const taxIncluded = item.gstSnapshot.taxIncluded;
+        
+        const calc = (taxableAmount * (rate / 100)) / (taxIncluded ? (1 + rate / 100) : 1);
+        item.gstSnapshot.amount = parseFloat(calc.toFixed(2));
+        totalTax += item.gstSnapshot.amount;
+    });
+
+    const tax = parseFloat(totalTax.toFixed(2));
     const total = parseFloat((subtotal - couponDiscount + shipping + tax).toFixed(2));
 
     // 5. Build vendor item groups
-    const vendorItems = Object.values(vendorMap).map((v) => ({
-        vendorId: v.vendorId,
-        vendorName: v.vendorName,
-        items: v.items,
-        subtotal: v.subtotal,
-        shipping: Number(shippingByVendor[String(v.vendorId)] || 0),
-        tax: parseFloat((v.subtotal * 0.18).toFixed(2)),
-        discount: 0,
-        status: 'pending',
-    }));
+    const vendorItems = Object.values(vendorMap).map((v) => {
+        // Filter items belonging to this vendor from our GST-enriched items list
+        const vendorGstItems = gstResult.items.filter(item => item.vendorId.toString() === v.vendorId.toString());
+        const vendorTax = parseFloat(vendorGstItems.reduce((acc, item) => acc + (item.gstSnapshot?.amount || 0), 0).toFixed(2));
+
+        return {
+            vendorId: v.vendorId,
+            vendorName: v.vendorName,
+            items: vendorGstItems,
+            subtotal: v.subtotal,
+            shipping: Number(shippingByVendor[String(v.vendorId)] || 0),
+            tax: vendorTax,
+            discount: 0,
+            status: 'pending',
+        };
+    });
 
     // 6-9. Transactional order creation to avoid partial writes.
     let order = null;
@@ -357,7 +399,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
             const [createdOrder] = await Order.create([{
                 orderId: generateOrderId(),
                 userId,
-                items: enrichedItems,
+                items: gstResult.items,
                 vendorItems,
                 shippingAddress,
                 paymentMethod: normalizedPaymentMethod,
@@ -469,6 +511,11 @@ export const placeOrder = asyncHandler(async (req, res) => {
         await session.endSession();
     }
 
+    // Update COD statistics asynchronously if user placed a COD order
+    if (order && normalizedPaymentMethod === 'cod' && userId) {
+        updateStatsForUser(userId).catch(err => console.error('Error updating COD stats:', err));
+    }
+
     const responseStatus = idempotentReplay ? 200 : 201;
     const responseMessage = idempotentReplay
         ? 'Duplicate order request ignored. Returning existing order.'
@@ -572,6 +619,11 @@ export const cancelOrder = asyncHandler(async (req, res) => {
         });
     } finally {
         await session.endSession();
+    }
+
+    // Trigger COD stats update if order was cancelled
+    if (req.user?.id) {
+        updateStatsForUser(req.user.id).catch(err => console.error('Error updating COD stats:', err));
     }
 
     res.status(200).json(new ApiResponse(200, null, 'Order cancelled successfully.'));

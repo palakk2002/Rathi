@@ -279,6 +279,9 @@ ${order.trackingNumber ? `Tracking Number: ${order.trackingNumber}` : ""}
                   Item
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
+                  HSN
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
                   Quantity
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">
@@ -295,7 +298,15 @@ ${order.trackingNumber ? `Tracking Number: ${order.trackingNumber}` : ""}
                 return (
                   <tr key={item.id || index} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-800">
-                      {item.name || `Item ${index + 1}`}
+                      <div>{item.name || `Item ${index + 1}`}</div>
+                      {item.gstSnapshot && (
+                        <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+                          GST Rate: {item.gstSnapshot.rate}% ({item.gstSnapshot.ruleType})
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700 text-center font-mono">
+                      {item.gstSnapshot?.hsnCode || item.hsnCode || "—"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 text-center">
                       {item.quantity || 1}
@@ -327,10 +338,20 @@ ${order.trackingNumber ? `Tracking Number: ${order.trackingNumber}` : ""}
               </div>
             )}
             {tax > 0 && (
-              <div className="flex justify-between text-sm text-gray-700">
-                <span>Tax:</span>
-                <span className="font-semibold">{formatPrice(tax)}</span>
-              </div>
+              <>
+                <div className="flex justify-between text-xs text-gray-500 pl-4 border-l border-gray-200">
+                  <span>CGST (Central GST):</span>
+                  <span>{formatPrice(tax / 2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 pl-4 border-l border-gray-200">
+                  <span>SGST (State GST):</span>
+                  <span>{formatPrice(tax / 2)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-700 font-semibold">
+                  <span>Total GST:</span>
+                  <span>{formatPrice(tax)}</span>
+                </div>
+              </>
             )}
             {shipping > 0 && (
               <div className="flex justify-between text-sm text-gray-700">

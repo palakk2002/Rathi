@@ -86,7 +86,8 @@ async function registerFCMToken(forceUpdate = false) {
     
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
-      throw new Error('Notification permission not granted');
+      console.warn('FCM registration skipped: Notification permission denied.');
+      return null;
     }
     
     const token = await getFCMToken();

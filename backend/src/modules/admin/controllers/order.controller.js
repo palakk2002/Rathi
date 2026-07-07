@@ -7,6 +7,7 @@ import User from '../../../models/User.model.js';
 import Commission from '../../../models/Commission.model.js';
 import Product from '../../../models/Product.model.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { updateStatsForUser } from '../../../services/codStats.service.js';
 
 // GET /api/admin/orders
 export const getAllOrders = asyncHandler(async (req, res) => {
@@ -249,6 +250,11 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
     if (notificationTasks.length > 0) {
         await Promise.allSettled(notificationTasks);
+    }
+
+    // Trigger COD stats update when moving to delivered or cancelled
+    if (order.userId && ['delivered', 'cancelled'].includes(nextStatus)) {
+        updateStatsForUser(order.userId).catch(err => console.error('Error updating COD stats:', err));
     }
 
     res.status(200).json(new ApiResponse(200, order, 'Order status updated.'));

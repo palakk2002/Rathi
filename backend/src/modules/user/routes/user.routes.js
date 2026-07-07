@@ -63,6 +63,8 @@ router.delete('/wishlist/:productId', ...customerAuth, wishlistController.remove
 router.get('/reviews/product/:productId', reviewController.getProductReviews);
 router.post('/reviews', ...customerAuth, reviewController.addReview);
 router.post('/reviews/:id/helpful', reviewController.voteHelpful);
+router.put('/reviews/:id', ...customerAuth, reviewController.updateReview);
+router.delete('/reviews/:id', ...customerAuth, reviewController.deleteUserReview);
 
 // Order routes
 router.post('/orders', ...customerAuth, validate(placeOrderSchema), orderController.placeOrder);

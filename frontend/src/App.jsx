@@ -24,6 +24,7 @@ import ReturnRequestDetail from "./modules/Admin/pages/ReturnRequestDetail";
 import Categories from "./modules/Admin/pages/Categories";
 import Brands from "./modules/Admin/pages/Brands";
 import Customers from "./modules/Admin/pages/Customers";
+import CodManagement from "./modules/Admin/pages/customers/CodManagement";
 
 import Campaigns from "./modules/Admin/pages/Campaigns";
 import Banners from "./modules/Admin/pages/Banners";
@@ -181,11 +182,21 @@ import VendorSupportTickets from "./modules/Vendor/pages/SupportTickets";
 import VendorPickupLocations from "./modules/Vendor/pages/PickupLocations";
 import VendorReports from "./modules/Vendor/pages/Reports";
 import VendorLanguageSettings from "./modules/Vendor/pages/LanguageSettings";
+import StaticPrivacyPolicy from "./shared/pages/StaticPrivacyPolicy";
+import StaticSupport from "./shared/pages/StaticSupport";
 
 // Inner component that has access to useLocation
 const AppRoutes = () => {
   return (
     <Routes>
+      {/* Publicly accessible static pages */}
+      <Route path="/privacy-policy" element={<RouteWrapper><StaticPrivacyPolicy /></RouteWrapper>} />
+      <Route path="/support" element={<RouteWrapper><StaticSupport /></RouteWrapper>} />
+      <Route path="/vendor/privacy-policy" element={<RouteWrapper><StaticPrivacyPolicy /></RouteWrapper>} />
+      <Route path="/vendor/support" element={<RouteWrapper><StaticSupport /></RouteWrapper>} />
+      <Route path="/delivery/privacy-policy" element={<RouteWrapper><StaticPrivacyPolicy /></RouteWrapper>} />
+      <Route path="/delivery/support" element={<RouteWrapper><StaticSupport /></RouteWrapper>} />
+
       <Route
         path="/"
         element={
@@ -455,6 +466,7 @@ const AppRoutes = () => {
         <Route path="customers/view-customers" element={<ViewCustomers />} />
         <Route path="customers/addresses" element={<CustomerAddresses />} />
         <Route path="customers/transactions" element={<Transactions />} />
+        <Route path="customers/cod-blacklist" element={<CodManagement />} />
         <Route path="customers/:id" element={<CustomerDetailPage />} />
 
         <Route path="delivery" element={<DeliveryBoys />} />

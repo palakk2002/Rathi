@@ -220,11 +220,27 @@ export const resetPassword = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, null, 'Password reset successful. Please login.'));
 });
 
+import CodStats from '../../../models/CodStats.model.js';
+
 // GET /api/user/auth/profile
 export const getProfile = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user.id);
+    const [user, codStats] = await Promise.all([
+        User.findById(req.user.id),
+        CodStats.findOne({ userId: req.user.id }).lean()
+    ]);
     if (!user) throw new ApiError(404, 'User not found.');
-    res.status(200).json(new ApiResponse(200, user, 'Profile fetched.'));
+    
+    const userDoc = user.toObject ? user.toObject() : user;
+    userDoc.codStats = codStats || {
+        totalCodOrders: 0,
+        deliveredCodOrders: 0,
+        cancelledCodOrders: 0,
+        cancellationRate: 0,
+        warningCount: 0,
+        isCodBlacklisted: false
+    };
+
+    res.status(200).json(new ApiResponse(200, userDoc, 'Profile fetched.'));
 });
 
 // PUT /api/user/auth/profile

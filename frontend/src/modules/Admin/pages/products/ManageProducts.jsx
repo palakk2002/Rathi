@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { FiSearch, FiEdit, FiTrash2, FiPlus } from "react-icons/fi";
+import { FiSearch, FiEdit, FiTrash2, FiPlus, FiRefreshCw } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ExportButton from "../../components/ExportButton";
@@ -11,7 +11,7 @@ import { formatPrice } from "../../../../shared/utils/helpers";
 
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { getAllProducts, deleteProduct } from "../../services/adminService";
+import { getAllProducts, deleteProduct, removeProductByReview, restoreProductByReview } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 const ManageProducts = () => {
@@ -26,6 +26,11 @@ const ManageProducts = () => {
     isOpen: false,
     productId: null,
   });
+  const [removalModal, setRemovalModal] = useState({
+    isOpen: false,
+    productId: null,
+  });
+  const [removalReason, setRemovalReason] = useState("");
   const [productFormModal, setProductFormModal] = useState({
     isOpen: false,
     productId: null,
@@ -151,7 +156,7 @@ const ManageProducts = () => {
                   ? "warning"
                   : "error"
             }>
-            {value.replace("_", " ").toUpperCase()}
+            {(value || "").replace("_", " ").toUpperCase()}
           </Badge>
         );
       },
@@ -167,21 +172,56 @@ const ManageProducts = () => {
               e.stopPropagation();
               setProductFormModal({ isOpen: true, productId: row.id });
             }}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Edit Details"
+          >
             <FiEdit />
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteModal({ isOpen: true, productId: row.id });
-            }}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <FiTrash2 />
-          </button>
+          {row.isReviewRemoved ? (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await restoreProductByReview(row.id);
+                  toast.success("Product restored successfully");
+                  loadProducts();
+                } catch (err) {
+                  // Handled in axios interceptor
+                }
+              }}
+              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+              title="Restore Visibility"
+            >
+              <FiRefreshCw />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setRemovalModal({ isOpen: true, productId: row.id });
+              }}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Remove Visibility"
+            >
+              <FiTrash2 />
+            </button>
+          )}
         </div>
       ),
     },
   ];
+
+  const handleRemoval = async () => {
+    try {
+      await removeProductByReview(removalModal.productId, removalReason);
+      toast.success("Product removed from visibility successfully");
+      setRemovalModal({ isOpen: false, productId: null });
+      setRemovalReason("");
+      loadProducts();
+    } catch (err) {
+      // Handled in axios interceptor
+    }
+  };
 
   const confirmDelete = async () => {
     try {
@@ -320,6 +360,42 @@ const ManageProducts = () => {
           loadProducts();
         }}
       />
+
+      {removalModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[11000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <h3 className="text-lg font-extrabold text-gray-800">Confirm Product Removal</h3>
+            <p className="text-sm text-gray-500">Provide a required removal reason below. The product will be hidden from customer visibility.</p>
+            <textarea
+              className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              rows={4}
+              placeholder="Reason for removal (minimum 5 characters)..."
+              value={removalReason}
+              onChange={(e) => setRemovalReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setRemovalModal({ isOpen: false, productId: null });
+                  setRemovalReason("");
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={removalReason.trim().length < 5}
+                onClick={handleRemoval}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors font-semibold disabled:opacity-50"
+              >
+                Confirm Removal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

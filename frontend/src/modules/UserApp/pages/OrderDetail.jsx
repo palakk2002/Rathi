@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiPackage, FiTruck, FiMapPin, FiCreditCard, FiRotateCw, FiArrowLeft, FiShoppingBag, FiX } from 'react-icons/fi';
 import { motion } from 'framer-motion';
@@ -230,6 +230,11 @@ const MobileOrderDetail = () => {
                                     {formatVariantLabel(item?.variant)}
                                   </p>
                                 )}
+                                {item.gstSnapshot && (
+                                  <p className="text-[10px] text-gray-500 font-medium mt-0.5">
+                                    GST ({item.gstSnapshot.rate}%) included: {formatPrice(item.gstSnapshot.amount)}
+                                  </p>
+                                )}
                               </div>
                               <p className="font-bold text-gray-800 text-sm">
                                 {formatPrice(item.price * item.quantity)}
@@ -259,6 +264,11 @@ const MobileOrderDetail = () => {
                           {formatVariantLabel(item?.variant) && (
                                   <p className="text-[11px] text-gray-500">
                                     {formatVariantLabel(item?.variant)}
+                                  </p>
+                                )}
+                                {item.gstSnapshot && (
+                                  <p className="text-[10px] text-gray-500 font-medium mt-0.5">
+                                    GST ({item.gstSnapshot.rate}%) included: {formatPrice(item.gstSnapshot.amount)}
                                   </p>
                                 )}
                         </div>
@@ -333,8 +343,8 @@ const MobileOrderDetail = () => {
                     <span>Shipping</span>
                     <span>{formatPrice(order.shipping)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
+                  <div className="flex justify-between text-gray-650 font-medium">
+                    <span>GST (Tax)</span>
                     <span>{formatPrice(order.tax)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold text-gray-800 pt-2 border-t border-gray-200">

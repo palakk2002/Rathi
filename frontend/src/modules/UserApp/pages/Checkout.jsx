@@ -66,6 +66,20 @@ const MobileCheckout = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchAddresses().catch(() => null);
+      // Fetch latest profile state to sync COD blacklist status
+      api.get("/user/auth/profile")
+        .then((response) => {
+          const payload = response?.data?.data || response?.data || response;
+          if (payload && useAuthStore.getState().user) {
+            useAuthStore.setState({
+              user: {
+                ...useAuthStore.getState().user,
+                ...payload
+              }
+            });
+          }
+        })
+        .catch(() => null);
     }
   }, [isAuthenticated, fetchAddresses]);
 
@@ -132,15 +146,62 @@ const MobileCheckout = () => {
     return 50;
   };
 
+  const [gstResult, setGstResult] = useState(null);
+
+  useEffect(() => {
+    const fetchCartGst = async () => {
+      if (items.length === 0) {
+        setGstResult(null);
+        return;
+      }
+      try {
+        const bodyItems = items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          variant: item.variant || {},
+          categoryId: item.categoryId || null
+        }));
+        const response = await api.post('/cart/gst-preview', { items: bodyItems });
+        const payload = response.data ?? response;
+        if (payload) {
+          setGstResult(payload);
+        }
+      } catch (err) {
+        console.error("Failed to fetch cart GST preview:", err);
+      }
+    };
+    fetchCartGst();
+  }, [items]);
+
   const total = getTotal();
   const shipping =
     typeof estimatedShipping === "number"
       ? estimatedShipping
       : calculateShippingFallback();
   const discount = appliedCoupon ? appliedDiscount : 0;
-  const taxableAmount = Math.max(0, total - discount);
-  const tax = taxableAmount * 0.18;
-  const finalTotal = Math.max(0, total + shipping + tax - discount);
+
+  // Calculate dynamic GST matching backend discount proportions
+  let tax = 0;
+  if (gstResult && gstResult.items) {
+    const discountRatio = total > 0 ? (discount / total) : 0;
+    let totalTax = 0;
+    gstResult.items.forEach(item => {
+      const itemSubtotal = item.price * item.quantity;
+      const itemDiscount = itemSubtotal * discountRatio;
+      const taxableAmount = Math.max(0, itemSubtotal - itemDiscount);
+      const rate = item.gstSnapshot?.rate ?? 18;
+      const taxIncluded = item.gstSnapshot?.taxIncluded ?? false;
+      const calc = (taxableAmount * (rate / 100)) / (taxIncluded ? (1 + rate / 100) : 1);
+      totalTax += calc;
+    });
+    tax = parseFloat(totalTax.toFixed(2));
+  } else {
+    const taxableAmount = Math.max(0, total - discount);
+    tax = parseFloat((taxableAmount * 0.18).toFixed(2));
+  }
+
+  const finalTotal = parseFloat(Math.max(0, total + shipping + tax - discount).toFixed(2));
 
   useEffect(() => {
     if (appliedCoupon) {
@@ -558,30 +619,47 @@ const MobileCheckout = () => {
                       Payment Method
                     </h2>
                     <div className="space-y-3 mb-6">
-                      {["card", "cash", "bank"].map((method) => (
-                        <label
-                          key={method}
-                          className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
-                            ? "border-primary-500 bg-primary-50"
-                            : "border-gray-200"
-                            }`}>
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={method}
-                            checked={formData.paymentMethod === method}
-                            onChange={handleInputChange}
-                            className="w-5 h-5 text-primary-500"
-                          />
-                          <span className="font-semibold text-gray-800 capitalize text-base">
-                            {method === "card"
-                              ? "Credit/Debit Card"
-                              : method === "cash"
-                                ? "Cash on Delivery"
-                                : "Bank Transfer"}
-                          </span>
-                        </label>
-                      ))}
+                      {["card", "cash", "bank"].map((method) => {
+                        const isCod = method === "cash";
+                        const isBlacklisted = isCod && user?.codStats?.isCodBlacklisted;
+                        
+                        return (
+                          <label
+                            key={method}
+                            className={`flex flex-col p-4 rounded-xl border-2 transition-all ${
+                              isBlacklisted 
+                                ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed" 
+                                : formData.paymentMethod === method
+                                  ? "border-primary-500 bg-primary-50 cursor-pointer"
+                                  : "border-gray-200 cursor-pointer"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                name="paymentMethod"
+                                value={method}
+                                checked={formData.paymentMethod === method}
+                                onChange={handleInputChange}
+                                disabled={isBlacklisted}
+                                className="w-5 h-5 text-primary-500"
+                              />
+                              <span className="font-semibold text-gray-800 capitalize text-base">
+                                {method === "card"
+                                  ? "Credit/Debit Card"
+                                  : method === "cash"
+                                    ? "Cash on Delivery"
+                                    : "Bank Transfer"}
+                              </span>
+                            </div>
+                            {isBlacklisted && (
+                              <p className="mt-2 text-sm text-red-600 font-medium">
+                                Cash on Delivery is currently unavailable due to high cancellation rates. Please complete your payment online.
+                              </p>
+                            )}
+                          </label>
+                        );
+                      })}
                     </div>
 
                     {/* Shipping Options */}

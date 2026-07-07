@@ -230,6 +230,95 @@ export const useReviewsStore = create(
         }
       },
 
+      updateReview: async (productId, reviewId, rating, comment, images) => {
+        const normalizedProductId = String(productId);
+        const normalizedReviewId = String(reviewId);
+
+        set((state) => {
+          const productReviews = state.reviews[normalizedProductId] || [];
+          const updated = productReviews.map((r) =>
+            String(r.id) === normalizedReviewId
+              ? { ...r, rating, comment, images: images || r.images }
+              : r
+          );
+          const updatedAll = state.allReviews.map((r) =>
+            String(r.id) === normalizedReviewId
+              ? { ...r, rating, comment, images: images || r.images }
+              : r
+          );
+          return {
+            reviews: {
+              ...state.reviews,
+              [normalizedProductId]: updated,
+            },
+            allReviews: updatedAll,
+          };
+        });
+
+        if (!isMongoObjectId(normalizedProductId) || !isMongoObjectId(normalizedReviewId)) {
+          return true;
+        }
+
+        try {
+          const response = await api.put(`/user/reviews/${reviewId}`, {
+            rating,
+            comment,
+            images: images || [],
+          });
+          const payload = response?.data;
+          if (payload) {
+            const updated = normalizeReview(payload);
+            set((state) => {
+              const currentReviews = (state.reviews[normalizedProductId] || []).map((r) =>
+                String(r.id) === normalizedReviewId ? updated : r
+              );
+              const currentAll = state.allReviews.map((r) =>
+                String(r.id) === normalizedReviewId ? updated : r
+              );
+              return {
+                reviews: {
+                  ...state.reviews,
+                  [normalizedProductId]: currentReviews,
+                },
+                allReviews: currentAll,
+              };
+            });
+          }
+          return true;
+        } catch (error) {
+          throw error;
+        }
+      },
+
+      deleteReview: async (productId, reviewId) => {
+        const normalizedProductId = String(productId);
+        const normalizedReviewId = String(reviewId);
+
+        set((state) => {
+          const productReviews = state.reviews[normalizedProductId] || [];
+          const filtered = productReviews.filter((r) => String(r.id) !== normalizedReviewId);
+          const filteredAll = state.allReviews.filter((r) => String(r.id) !== normalizedReviewId);
+          return {
+            reviews: {
+              ...state.reviews,
+              [normalizedProductId]: filtered,
+            },
+            allReviews: filteredAll,
+          };
+        });
+
+        if (!isMongoObjectId(normalizedProductId) || !isMongoObjectId(normalizedReviewId)) {
+          return true;
+        }
+
+        try {
+          await api.delete(`/user/reviews/${reviewId}`);
+          return true;
+        } catch (error) {
+          throw error;
+        }
+      },
+
       // Get reviews for a product
       getReviews: (productId) => {
         const state = get();

@@ -339,3 +339,39 @@ export const updateStock = asyncHandler(async (req, res) => {
 
     res.status(200).json(new ApiResponse(200, product, 'Stock updated.'));
 });
+
+// POST /api/vendor/products/:id/resubmit
+export const resubmitProduct = asyncHandler(async (req, res) => {
+    const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id });
+    if (!product) throw new ApiError(404, 'Product not found.');
+
+    if (!product.isReviewRemoved) {
+        throw new ApiError(400, 'Product is not currently removed by admin.');
+    }
+
+    product.isPendingRestoration = true;
+    product.reviewRemovalHistory.push({
+        action: 'resubmit',
+        reason: 'Vendor has edited the product details and resubmitted it for approval.',
+        performedAt: new Date()
+    });
+
+    await product.save();
+
+    // Create system notification for admins
+    try {
+        const NotificationModel = Product.db.model('Notification');
+        await NotificationModel.create({
+            recipientId: req.user.id,
+            recipientType: 'admin',
+            title: 'Product Resubmitted for Approval',
+            message: `The product "${product.name}" has been edited and resubmitted for approval by vendor.`,
+            type: 'system',
+            data: { productId: String(product._id) }
+        });
+    } catch (notifErr) {
+        console.error('Error creating admin notification on product resubmit:', notifErr);
+    }
+
+    res.status(200).json(new ApiResponse(200, product, 'Product has been resubmitted for approval.'));
+});

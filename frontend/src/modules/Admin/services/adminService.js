@@ -90,6 +90,34 @@ export const getTaxPricingRules = () =>
 export const updateTaxPricingRules = (data) =>
     api.put('/admin/products/tax-pricing-rules', data);
 
+// GST Rules Management
+export const getGstRules = (params) =>
+    api.get('/admin/gst/rules', { params });
+
+export const getGstRuleById = (id) =>
+    api.get(`/admin/gst/rules/${id}`);
+
+export const createGstRule = (data) =>
+    api.post('/admin/gst/rules', data);
+
+export const updateGstRule = (id, data) =>
+    api.put(`/admin/gst/rules/${id}`, data);
+
+export const toggleGstRule = (id, reason) =>
+    api.patch(`/admin/gst/rules/${id}/toggle`, { reason });
+
+export const deleteGstRule = (id, reason) =>
+    api.delete(`/admin/gst/rules/${id}`, { data: { reason } });
+
+export const getGstHistory = () =>
+    api.get('/admin/gst/history');
+
+export const getEffectiveProductGst = (productId) =>
+    api.get(`/admin/gst/effective/${productId}`);
+
+export const getGstLedger = () =>
+    api.get('/admin/gst/ledger');
+
 // ─── Categories ───────────────────────────────────────────────────────────────
 export const getAllCategories = () =>
     api.get('/admin/categories');
@@ -306,3 +334,10 @@ export const updatePolicy = (type, content) =>
 export const getAdminNotifications = (params) => api.get('/admin/notifications', { params });
 export const markNotificationAsRead = (id) => api.put(`/admin/notifications/${id}/read`);
 export const markAllNotificationsAsRead = () => api.put('/admin/notifications/read-all');
+
+// ─── COD Abuse & Blacklist Management ───────────────────────────────────────────
+export const getCodUsers = (params = {}) => api.get('/admin/cod/users', { params });
+export const getUserCodTimeline = (userId) => api.get(`/admin/cod/users/${userId}/timeline`);
+export const issueUserWarning = (userId, reason) => api.post(`/admin/cod/users/${userId}/warn`, { reason });
+export const toggleUserBlacklist = (userId, isBlacklisted, reason) => api.post(`/admin/cod/users/${userId}/blacklist`, { isBlacklisted, reason });
+

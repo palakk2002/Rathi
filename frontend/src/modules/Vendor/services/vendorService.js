@@ -97,6 +97,17 @@ export const createVendorProduct = (data) => api.post('/vendor/products', data);
 export const updateVendorProduct = (id, data) =>
     api.put(`/vendor/products/${id}`, data);
 
+export const resubmitVendorProduct = (id) =>
+    api.post(`/vendor/products/${id}/resubmit`);
+
+export const getVendorProductGst = (id) =>
+    api.get(`/vendor/products/${id}/gst`);
+
+export const getEffectiveGstPreview = (categoryId, price, taxIncluded, productId = "") =>
+    api.get('/products/gst/effective', {
+        params: { productId, categoryId, price, taxIncluded }
+    });
+
 /**
  * Delete a product
  * @param {string} id  — MongoDB _id

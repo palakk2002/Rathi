@@ -4,6 +4,7 @@ import ApiError from '../../../utils/ApiError.js';
 import User from '../../../models/User.model.js';
 import Order from '../../../models/Order.model.js';
 import Address from '../../../models/Address.model.js';
+import CodStats from '../../../models/CodStats.model.js';
 
 /**
  * @desc    Get all customers with pagination and filters
@@ -112,7 +113,7 @@ export const getCustomerById = asyncHandler(async (req, res) => {
         throw new ApiError(404, 'Customer not found');
     }
 
-    const [orderStats, addresses] = await Promise.all([
+    const [orderStats, addresses, codStats] = await Promise.all([
         Order.aggregate([
             { $match: { userId: customer._id } },
             {
@@ -126,6 +127,10 @@ export const getCustomerById = asyncHandler(async (req, res) => {
         ]),
         Address.find({ userId: customer._id })
             .sort({ isDefault: -1, createdAt: -1 })
+            .lean(),
+        CodStats.findOne({ userId: customer._id })
+            .populate('warnings.issuedBy', 'name email')
+            .populate('blacklistHistory.adminId', 'name email')
             .lean(),
     ]);
 
@@ -141,7 +146,15 @@ export const getCustomerById = asyncHandler(async (req, res) => {
             orders: stats.totalOrders,
             totalSpent: stats.totalSpent,
             lastOrderDate: stats.lastOrderDate,
-            addresses
+            addresses,
+            codStats: codStats || {
+                totalCodOrders: 0,
+                deliveredCodOrders: 0,
+                cancelledCodOrders: 0,
+                cancellationRate: 0,
+                warningCount: 0,
+                isCodBlacklisted: false
+            }
         }, 'Customer details fetched successfully')
     );
 });

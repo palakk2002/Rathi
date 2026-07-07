@@ -11,6 +11,7 @@ import {
   getAllVendorReviews,
   updateVendorReviewStatus,
   addVendorReviewResponse,
+  resubmitVendorProduct,
 } from "../services/vendorService";
 import toast from "react-hot-toast";
 
@@ -24,6 +25,17 @@ const ProductReviews = () => {
   const [selectedProduct, setSelectedProduct] = useState("all");
   const [selectedReview, setSelectedReview] = useState(null);
   const [responseText, setResponseText] = useState("");
+  const [activeTab, setActiveTab] = useState("reviews");
+
+  const handleResubmit = async (productId) => {
+    try {
+      await resubmitVendorProduct(productId);
+      toast.success("Product resubmitted for approval successfully!");
+      await fetchProducts({ fetchAll: true, limit: 200 });
+    } catch (err) {
+      toast.error(err?.message || "Failed to resubmit product");
+    }
+  };
 
   const vendorId = vendor?.id;
 
@@ -241,6 +253,17 @@ const ProductReviews = () => {
     return stats;
   }, [reviews]);
 
+  const lowRatedProducts = useMemo(() => {
+    return products.filter((p) => {
+      const avg = Number(p.rating || p.averageRating || 0);
+      return avg > 0 && avg < 3.0;
+    });
+  }, [products]);
+
+  const removedProducts = useMemo(() => {
+    return products.filter((p) => p.isReviewRemoved === true);
+  }, [products]);
+
   if (!vendorId) {
     return (
       <div className="text-center py-12">
@@ -254,110 +277,255 @@ const ProductReviews = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6">
-      <div className="lg:hidden">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-          Product Reviews
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600">
-          Manage customer reviews and ratings
-        </p>
+      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">
+            Product Feedback & Moderation
+          </h1>
+          <p className="text-sm text-gray-600">
+            Monitor review metrics, respond to reviews, and manage quality alerts
+          </p>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
-        {[5, 4, 3, 2, 1].map((rating) => (
-          <div
-            key={rating}
-            className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs sm:text-sm text-gray-600">
-                {rating} Star
-              </span>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("reviews")}
+          className={`py-3 px-6 font-bold text-sm border-b-2 transition-all ${
+            activeTab === "reviews"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Customer Reviews
+        </button>
+        <button
+          onClick={() => setActiveTab("alerts")}
+          className={`py-3 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
+            activeTab === "alerts"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Quality Alerts & Removed Products
+          {(removedProducts.length > 0 || lowRatedProducts.length > 0) && (
+            <span className="bg-red-500 text-white rounded-full text-xs px-2 py-0.5 font-bold">
+              {removedProducts.length + lowRatedProducts.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === "reviews" ? (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+            {[5, 4, 3, 2, 1].map((rating) => (
+              <div
+                key={rating}
+                className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs sm:text-sm text-gray-600">
+                    {rating} Star
+                  </span>
+                </div>
+                <p className="text-lg sm:text-2xl font-bold text-gray-800">
+                  {ratingStats[rating] || 0}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Filters */}
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
+              <div className="relative flex-1 w-full sm:min-w-[200px]">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search reviews..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+                />
+              </div>
+
+              <AnimatedSelect
+                value={selectedRating}
+                onChange={(e) => setSelectedRating(e.target.value)}
+                options={[
+                  { value: "all", label: "All Ratings" },
+                  { value: "5", label: "5 Stars" },
+                  { value: "4", label: "4 Stars" },
+                  { value: "3", label: "3 Stars" },
+                  { value: "2", label: "2 Stars" },
+                  { value: "1", label: "1 Star" },
+                ]}
+                className="w-full sm:w-auto min-w-[140px]"
+              />
+
+              <AnimatedSelect
+                value={selectedProduct}
+                onChange={(e) => setSelectedProduct(e.target.value)}
+                options={[
+                  { value: "all", label: "All Products" },
+                  ...vendorProducts.map((p) => ({
+                    value: String(p._id ?? p.id),
+                    label: p.name,
+                  })),
+                ]}
+                className="w-full sm:w-auto min-w-[140px]"
+              />
+
+              <div className="w-full sm:w-auto">
+                <ExportButton
+                  data={filteredReviews}
+                  headers={[
+                    { label: "Product", accessor: (row) => row.productName },
+                    { label: "Customer", accessor: (row) => row.customerName },
+                    { label: "Rating", accessor: (row) => row.rating },
+                    { label: "Review", accessor: (row) => row.comment },
+                    { label: "Status", accessor: (row) => row.status },
+                    {
+                      label: "Date",
+                      accessor: (row) =>
+                        new Date(row.createdAt).toLocaleDateString(),
+                    },
+                  ]}
+                  filename="vendor-reviews"
+                />
+              </div>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-gray-800">
-              {ratingStats[rating] || 0}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
-          <div className="relative flex-1 w-full sm:min-w-[200px]">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search reviews..."
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
-            />
           </div>
 
-          <AnimatedSelect
-            value={selectedRating}
-            onChange={(e) => setSelectedRating(e.target.value)}
-            options={[
-              { value: "all", label: "All Ratings" },
-              { value: "5", label: "5 Stars" },
-              { value: "4", label: "4 Stars" },
-              { value: "3", label: "3 Stars" },
-              { value: "2", label: "2 Stars" },
-              { value: "1", label: "1 Star" },
-            ]}
-            className="w-full sm:w-auto min-w-[140px]"
-          />
-
-          <AnimatedSelect
-            value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
-            options={[
-              { value: "all", label: "All Products" },
-              ...vendorProducts.map((p) => ({
-                value: String(p._id ?? p.id),
-                label: p.name,
-              })),
-            ]}
-            className="w-full sm:w-auto min-w-[140px]"
-          />
-
-          <div className="w-full sm:w-auto">
-            <ExportButton
+          {/* Reviews Table */}
+          {isLoading ? (
+            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">
+              <p className="text-gray-500">Loading reviews...</p>
+            </div>
+          ) : filteredReviews.length > 0 ? (
+            <DataTable
               data={filteredReviews}
-              headers={[
-                { label: "Product", accessor: (row) => row.productName },
-                { label: "Customer", accessor: (row) => row.customerName },
-                { label: "Rating", accessor: (row) => row.rating },
-                { label: "Review", accessor: (row) => row.comment },
-                { label: "Status", accessor: (row) => row.status },
-                {
-                  label: "Date",
-                  accessor: (row) =>
-                    new Date(row.createdAt).toLocaleDateString(),
-                },
-              ]}
-              filename="vendor-reviews"
+              columns={columns}
+              pagination={true}
+              itemsPerPage={10}
             />
-          </div>
-        </div>
-      </div>
-
-      {/* Reviews Table */}
-      {isLoading ? (
-        <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">
-          <p className="text-gray-500">Loading reviews...</p>
-        </div>
-      ) : filteredReviews.length > 0 ? (
-        <DataTable
-          data={filteredReviews}
-          columns={columns}
-          pagination={true}
-          itemsPerPage={10}
-        />
+          ) : (
+            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">
+              <p className="text-gray-500">No reviews found</p>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">
-          <p className="text-gray-500">No reviews found</p>
+        <div className="space-y-6">
+          {/* Removed Products Card */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 text-red-650 flex items-center gap-2">
+              🚨 Removed Products ({removedProducts.length})
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              These products have been hidden from customer catalog due to critical rating issues. You can edit and resubmit them for approval.
+            </p>
+
+            {removedProducts.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {removedProducts.map((p) => (
+                  <div key={p.id || p._id} className="border border-gray-150 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-red-50/20">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                        <img 
+                          src={p.image || p.images?.[0] || "/placeholder-image.png"} 
+                          alt={p.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-800 text-base">{p.name}</h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-xs font-semibold text-gray-500">Avg Rating:</span>
+                          <span className="text-xs font-bold text-yellow-600">{p.rating || p.averageRating || 'N/A'} ★</span>
+                          <span className="text-xs text-gray-400">({p.reviewCount || 0} reviews)</span>
+                        </div>
+                        <div className="mt-2 text-xs bg-red-50 border border-red-100 text-red-700 p-2.5 rounded-lg font-semibold max-w-xl">
+                          <span className="font-extrabold block mb-0.5">Removal Reason:</span>
+                          {p.removedReason || 'No reason provided by administrator.'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-2 md:mt-0">
+                      <button
+                        onClick={() => navigate(`/vendor/products/${p.id || p._id}`)}
+                        className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+                      >
+                        Edit Details
+                      </button>
+                      <button
+                        onClick={() => handleResubmit(p.id || p._id)}
+                        disabled={p.isPendingRestoration}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors ${
+                          p.isPendingRestoration 
+                            ? "bg-gray-400 cursor-not-allowed" 
+                            : "bg-primary-600 hover:bg-primary-700 shadow-sm"
+                        }`}
+                      >
+                        {p.isPendingRestoration ? "Pending Approval" : "Resubmit for Approval"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                No products are currently removed. Great job maintaining review quality!
+              </div>
+            )}
+          </div>
+
+          {/* Low Rated Products Card */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 text-orange-655 flex items-center gap-2">
+              ⚠️ Low-Rated Products ({lowRatedProducts.length})
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              These products have average customer feedback ratings below 3.0. Please inspect quality reviews and improve them to avoid catalog removals.
+            </p>
+
+            {lowRatedProducts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {lowRatedProducts.map((p) => (
+                  <div key={p.id || p._id} className="border border-gray-150 rounded-xl p-4 flex items-center gap-4 bg-orange-50/10">
+                    <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                      <img 
+                        src={p.image || p.images?.[0] || "/placeholder-image.png"} 
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-800 text-sm truncate max-w-[200px]">{p.name}</h4>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-xs text-yellow-600 font-extrabold">{p.rating || p.averageRating} ★</span>
+                        <span className="text-xs text-gray-400">({p.reviewCount} reviews)</span>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/vendor/products/${p.id || p._id}`)}
+                        className="mt-2 text-xs text-primary-600 font-bold hover:underline"
+                      >
+                        Manage Product &rarr;
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                All active products have healthy rating profiles (&gt;= 3.0).
+              </div>
+            )}
+          </div>
         </div>
       )}
 

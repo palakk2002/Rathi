@@ -403,6 +403,7 @@ export const restoreProductByReview = asyncHandler(async (req, res) => {
     if (!product) throw new ApiError(404, 'Product not found.');
 
     product.isReviewRemoved = false;
+    product.isPendingRestoration = false;
     product.removedReason = '';
     product.removedBy = undefined;
     product.removedAt = undefined;

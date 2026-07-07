@@ -13,6 +13,8 @@ import * as reportController from '../controllers/report.controller.js';
 import * as marketingController from '../controllers/marketing.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
+import * as gstController from '../controllers/gst.controller.js';
+import codRoutes from './cod.routes.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -32,6 +34,11 @@ import {
     updateBrandSchema,
     removeProductSchema,
 } from '../validators/catalog.validator.js';
+import {
+    createGstRuleSchema,
+    updateGstRuleSchema,
+    toggleGstRuleSchema,
+} from '../validators/gst.validator.js';
 import {
     customerListQuerySchema,
     customerIdParamSchema,
@@ -193,5 +200,19 @@ router.get('/reports/inventory', ...adminAuth, reportController.getInventoryRepo
 router.get('/notifications', ...adminAuth, notificationController.getAdminNotifications);
 router.put('/notifications/:id/read', ...adminAuth, notificationController.markAsRead);
 router.put('/notifications/read-all', ...adminAuth, notificationController.markAllAsRead);
+
+// ─── GST Management ───────────────────────────────────────────────────────────
+router.get('/gst/rules', ...adminAuth, gstController.getGstRules);
+router.get('/gst/rules/:id', ...adminAuth, gstController.getGstRuleById);
+router.post('/gst/rules', ...adminAuth, validate(createGstRuleSchema), gstController.createGstRule);
+router.put('/gst/rules/:id', ...adminAuth, validate(updateGstRuleSchema), gstController.updateGstRule);
+router.patch('/gst/rules/:id/toggle', ...adminAuth, validate(toggleGstRuleSchema), gstController.toggleGstRule);
+router.delete('/gst/rules/:id', ...adminAuth, validate(toggleGstRuleSchema), gstController.deleteGstRule);
+router.get('/gst/history', ...adminAuth, gstController.getGstHistory);
+router.get('/gst/effective/:productId', ...adminAuth, gstController.getEffectiveProductGst);
+router.get('/gst/ledger', ...adminAuth, gstController.getGstLedger);
+
+// ─── COD Abuse & Blacklist Management ───────────────────────────────────────────
+router.use('/cod', codRoutes);
 
 export default router;

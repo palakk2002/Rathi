@@ -224,6 +224,37 @@ const getProductDetail = asyncHandler(async (req, res) => {
 // GET /api/products/:id
 router.get('/products/:id', getProductDetail);
 
+// GET /api/products/gst/effective
+router.get('/products/gst/effective', asyncHandler(async (req, res) => {
+    const { productId, categoryId, price, taxIncluded } = req.query;
+
+    const { getEffectiveGstRate, calculateGst } = await import('../services/gst.service.js');
+    const effective = await getEffectiveGstRate(productId || null, categoryId || null);
+    const calculations = calculateGst(price || 0, effective.rate, taxIncluded === 'true');
+
+    res.status(200).json(new ApiResponse(200, { effective, calculations }, 'GST details resolved.'));
+}));
+
+// GET /api/products/:id/gst
+router.get('/products/:id/gst', asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id).select('categoryId price taxIncluded').lean();
+    if (!product) throw new ApiError(404, 'Product not found.');
+
+    const { getEffectiveGstRate, calculateGst } = await import('../services/gst.service.js');
+    const effective = await getEffectiveGstRate(product._id, product.categoryId);
+    const calculations = calculateGst(product.price, effective.rate, product.taxIncluded);
+
+    res.status(200).json(new ApiResponse(200, { effective, calculations }, 'Product GST resolved.'));
+}));
+
+// POST /api/cart/gst-preview
+router.post('/cart/gst-preview', asyncHandler(async (req, res) => {
+    const { items = [] } = req.body;
+    const { calculateOrderGst } = await import('../services/gst.service.js');
+    const result = await calculateOrderGst(items);
+    res.status(200).json(new ApiResponse(200, result, 'Cart GST preview resolved.'));
+}));
+
 // GET /api/categories (public)
 router.get('/categories/all', asyncHandler(async (req, res) => {
     const categories = await Category.find({ isActive: true }).sort({ order: 1 });

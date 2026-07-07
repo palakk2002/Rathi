@@ -13,6 +13,7 @@ import * as returnController from '../controllers/return.controller.js';
 import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
+import * as gstController from '../../admin/controllers/gst.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -57,8 +58,10 @@ router.get('/products', ...vendorAuth, productController.getVendorProducts);
 router.get('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.getVendorProductById);
 router.post('/products', ...vendorAuth, validate(createProductSchema), productController.createProduct);
 router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), validate(updateProductSchema), productController.updateProduct);
+router.post('/products/:id/resubmit', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.resubmitProduct);
 router.delete('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.deleteProduct);
 router.patch('/stock/:productId', ...vendorAuth, productController.updateStock);
+router.get('/products/:id/gst', ...vendorAuth, validate(productIdParamSchema, 'params'), gstController.getEffectiveProductGst);
 
 // Orders
 router.get('/orders', ...vendorAuth, orderController.getVendorOrders);

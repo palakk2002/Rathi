@@ -65,6 +65,7 @@ const productSchema = new mongoose.Schema(
         tags: [String],
         // Review Removal Feature fields
         isReviewRemoved: { type: Boolean, default: false, index: true },
+        isPendingRestoration: { type: Boolean, default: false, index: true },
         removedReason: { type: String, default: '' },
         removedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
         removedAt: { type: Date },
@@ -72,7 +73,7 @@ const productSchema = new mongoose.Schema(
         averageRating: { type: Number, default: 0 },
         negativeReviewPercentage: { type: Number, default: 0 },
         reviewRemovalHistory: [{
-            action: { type: String, enum: ['remove', 'restore'] },
+            action: { type: String, enum: ['remove', 'restore', 'resubmit'] },
             reason: String,
             performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
             performedAt: { type: Date, default: Date.now }

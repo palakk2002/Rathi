@@ -205,7 +205,27 @@ const MobileProductDetail = () => {
         getVariantSignature(item.variant || {}) === selectedVariantSignature
     )
     : false;
-  const productReviews = product ? sortReviews(product.id, "newest") : [];
+
+  const [reviewSort, setReviewSort] = useState("newest");
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState("");
+  const { updateReview, deleteReview } = useReviewsStore();
+
+  const productReviews = product ? sortReviews(product.id, reviewSort) : [];
+
+  const reviewStats = useMemo(() => {
+    const total = productReviews.length;
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    let sum = 0;
+    productReviews.forEach((r) => {
+      const rating = Math.min(5, Math.max(1, Math.round(r.rating || 0)));
+      distribution[rating] = (distribution[rating] || 0) + 1;
+      sum += r.rating;
+    });
+    const avg = total > 0 ? Number((sum / total).toFixed(1)) : 0;
+    return { total, distribution, avg };
+  }, [productReviews]);
 
   useEffect(() => {
     let active = true;
@@ -485,8 +505,40 @@ const MobileProductDetail = () => {
       return false;
     }
 
-    await fetchReviews(product.id, { sort: "newest", limit: 50 });
+    await fetchReviews(product.id, { sort: reviewSort, limit: 50 });
     return true;
+  };
+
+  const handleEditClick = (review) => {
+    setEditingReviewId(review.id || review._id);
+    setEditRating(review.rating);
+    setEditComment(review.comment || "");
+  };
+
+  const handleSaveEdit = async (reviewId) => {
+    if (editRating === 0) {
+      toast.error("Please select a rating");
+      return;
+    }
+    try {
+      await updateReview(product.id, reviewId, editRating, editComment);
+      setEditingReviewId(null);
+      toast.success("Review updated successfully and pending moderation!");
+      await fetchReviews(product.id, { sort: reviewSort, limit: 50 });
+    } catch (err) {
+      toast.error(err?.message || "Failed to update review");
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Are you sure you want to delete your review?")) return;
+    try {
+      await deleteReview(product.id, reviewId);
+      toast.success("Review deleted successfully!");
+      await fetchReviews(product.id, { sort: reviewSort, limit: 50 });
+    } catch (err) {
+      toast.error(err?.message || "Failed to delete review");
+    }
   };
 
   return (
@@ -752,63 +804,198 @@ const MobileProductDetail = () => {
                   </div>
                 )}
 
-                {/* Write Review */}
-                {isAuthenticated && isMongoId(product?.id) && (
-                  <div className="pt-6">
-                    {isBlocked ? (
-                      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 font-semibold text-center shadow-xs">
-                        Your account has been temporarily blocked. Please contact support.
+                {/* Ratings & Reviews Section */}
+                <div className="pt-8 border-t border-gray-200 mt-8">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6">Ratings & Reviews</h3>
+                  
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50 p-6 rounded-3xl border border-gray-100 mb-8">
+                    {/* Left: Avg Stars */}
+                    <div className="flex flex-col items-center justify-center text-center">
+                      <p className="text-5xl font-extrabold text-gray-900">{reviewStats.avg}</p>
+                      <div className="flex gap-1 my-3 text-yellow-400">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <FiStar 
+                            key={star} 
+                            className={`text-2xl ${star <= Math.round(reviewStats.avg) ? "fill-yellow-400" : "text-gray-300"}`} 
+                          />
+                        ))}
                       </div>
-                    ) : eligibleDeliveredOrderId ? (
-                      <ReviewForm
-                        productId={product.id}
-                        onSubmit={handleSubmitReview}
-                      />
-                    ) : (
-                      <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm text-gray-600">
-                        Reviews are available after product delivery.
-                      </div>
-                    )}
-                  </div>
-                )}
+                      <p className="text-sm font-semibold text-gray-500">{reviewStats.total} reviews</p>
+                    </div>
 
-                {/* Reviews List */}
-                {productReviews.length > 0 && (
-                  <div className="pt-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                      Customer Reviews ({productReviews.length})
-                    </h3>
-                    <div className="space-y-4">
-                      {productReviews.slice(0, 3).map((review) => (
-                        <div key={review.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-bold text-gray-600">
-                                {review.user.charAt(0)}
-                              </div>
-                              <span className="text-sm font-bold text-gray-900">
-                                {review.user}
-                              </span>
+                    {/* Right: Distribution bars */}
+                    <div className="space-y-2.5">
+                      {[5, 4, 3, 2, 1].map((rating) => {
+                        const count = reviewStats.distribution[rating] || 0;
+                        const pct = reviewStats.total > 0 ? (count / reviewStats.total) * 100 : 0;
+                        return (
+                          <div key={rating} className="flex items-center gap-3">
+                            <span className="text-sm font-semibold text-gray-600 w-12">{rating} Star</span>
+                            <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-yellow-400 rounded-full" 
+                                style={{ width: `${pct}%` }}
+                              />
                             </div>
-                            <div className="flex items-center gap-1">
-                              <span className="font-bold text-sm text-gray-700">{review.rating}</span>
-                              <FiStar className="text-yellow-400 fill-yellow-400 text-sm" />
-                            </div>
+                            <span className="text-sm text-gray-500 font-semibold w-8 text-right">{count}</span>
                           </div>
-                          <p className="text-sm text-gray-600 leading-relaxed pl-10">{review.comment}</p>
-                          {review.vendorResponse && (
-                            <div className="mt-3 ml-10 bg-primary-50 border border-primary-100 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-primary-700 mb-1">
-                                Vendor Response
-                              </p>
-                              <p className="text-sm text-primary-800">{review.vendorResponse}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
-                )}
+
+                  {/* Filter & Write Review Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold text-gray-700">Sort By</span>
+                      <select 
+                        value={reviewSort}
+                        onChange={(e) => setReviewSort(e.target.value)}
+                        className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-semibold"
+                      >
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="highest-rating">Highest Rating</option>
+                        <option value="lowest-rating">Lowest Rating</option>
+                        <option value="most-helpful">Most Helpful</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Write Review Form */}
+                  {isAuthenticated && isMongoId(product?.id) && (
+                    <div className="mb-8">
+                      {isBlocked ? (
+                        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 font-semibold text-center shadow-xs">
+                          Your account has been temporarily blocked. Please contact support.
+                        </div>
+                      ) : eligibleDeliveredOrderId ? (
+                        <ReviewForm
+                          productId={product.id}
+                          onSubmit={handleSubmitReview}
+                        />
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm text-gray-600">
+                          Reviews are available after product delivery.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Reviews List */}
+                  {productReviews.length > 0 ? (
+                    <div className="space-y-6">
+                      {productReviews.map((review) => {
+                        const isOwnReview = isAuthenticated && user && (String(review.userId) === String(user.id) || String(review.userId?._id) === String(user.id) || review.customerEmail === user.email);
+                        const isEditing = editingReviewId === (review.id || review._id);
+
+                        return (
+                          <div key={review.id} className="bg-white border border-gray-150 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center font-bold text-white shadow-sm">
+                                  {review.user ? review.user.charAt(0).toUpperCase() : 'U'}
+                                </div>
+                                <div>
+                                  <span className="text-sm font-bold text-gray-900 block">
+                                    {review.user || 'Customer'}
+                                  </span>
+                                  <span className="text-xs text-gray-400 font-medium">
+                                    {new Date(review.date || review.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-0.5 text-yellow-400">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <FiStar 
+                                      key={star} 
+                                      className={`text-sm ${star <= review.rating ? "fill-yellow-400" : "text-gray-200"}`} 
+                                    />
+                                  ))}
+                                </div>
+
+                                {/* Edit/Delete for Own Review */}
+                                {isOwnReview && !isEditing && (
+                                  <div className="flex gap-2 ml-4">
+                                    <button 
+                                      onClick={() => handleEditClick(review)}
+                                      className="text-blue-500 hover:text-blue-700 text-xs font-bold border border-blue-200 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteReview(review.id || review._id)}
+                                      className="text-red-500 hover:text-red-750 text-xs font-bold border border-red-200 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {isEditing ? (
+                              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-gray-700">Your Rating:</span>
+                                  <div className="flex gap-1 text-yellow-400">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <button 
+                                        key={star}
+                                        onClick={() => setEditRating(star)}
+                                        className="focus:outline-none"
+                                      >
+                                        <FiStar className={`text-xl ${star <= editRating ? "fill-yellow-400" : "text-gray-300"}`} />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <textarea 
+                                  value={editComment}
+                                  onChange={(e) => setEditComment(e.target.value)}
+                                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                                  rows={3}
+                                  placeholder="Edit your review description..."
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <button 
+                                    onClick={() => setEditingReviewId(null)}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button 
+                                    onClick={() => handleSaveEdit(review.id || review._id)}
+                                    className="gradient-green text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                  >
+                                    Save Changes
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-600 leading-relaxed pl-1 pb-1">{review.comment}</p>
+                            )}
+
+                            {review.vendorResponse && (
+                              <div className="mt-4 bg-primary-50 border border-primary-100 rounded-xl p-4 shadow-2xs">
+                                <p className="text-xs font-bold text-primary-700 mb-1">
+                                  Vendor Response
+                                </p>
+                                <p className="text-sm text-primary-800 leading-relaxed">{review.vendorResponse}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 font-medium">
+                      No customer reviews yet. Be the first to purchase and review this product!
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -9,6 +9,14 @@ const orderItemSchema = new mongoose.Schema({
     quantity: Number,
     variant: { type: mongoose.Schema.Types.Mixed, default: {} },
     variantKey: String,
+    gstSnapshot: {
+        rate: { type: Number, default: 18 },
+        amount: { type: Number, default: 0 },
+        hsnCode: { type: String, default: '' },
+        ruleType: { type: String, default: 'default_fallback' },
+        basePrice: { type: Number },
+        taxIncluded: { type: Boolean, default: false }
+    }
 });
 
 const vendorItemGroupSchema = new mongoose.Schema({

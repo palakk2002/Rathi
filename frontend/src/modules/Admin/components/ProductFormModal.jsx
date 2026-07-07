@@ -10,6 +10,9 @@ import {
   updateProduct,
   getAllVendors,
   uploadAdminImage,
+  getProductReviewAnalytics,
+  removeProductByReview,
+  restoreProductByReview,
 } from "../services/adminService";
 import CategorySelector from "./CategorySelector";
 import AnimatedSelect from "./AnimatedSelect";
@@ -30,6 +33,21 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     sizes: "",
     colors: "",
   });
+
+  const [analytics, setAnalytics] = useState(null);
+  const [productDetails, setProductDetails] = useState(null);
+  const [showRemovalModal, setShowRemovalModal] = useState(false);
+  const [removalReason, setRemovalReason] = useState("");
+
+  const loadAnalytics = async () => {
+    if (!productId || productId === "new") return;
+    try {
+      const res = await getProductReviewAnalytics(productId);
+      setAnalytics(res.data);
+    } catch (err) {
+      console.error("Failed to load review analytics", err);
+    }
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -107,6 +125,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       try {
         const response = await getProductById(productId);
         const product = response.data;
+        setProductDetails(product);
+        loadAnalytics();
 
         if (product) {
           const productCategoryId = extractId(product.categoryId);
@@ -181,6 +201,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     if (isOpen && isEdit && productId && categories.length > 0) {
       fetchProduct();
     } else if (isOpen && !isEdit) {
+      setAnalytics(null);
+      setProductDetails(null);
       // Reset form for new product
       setFormData({
         name: "",

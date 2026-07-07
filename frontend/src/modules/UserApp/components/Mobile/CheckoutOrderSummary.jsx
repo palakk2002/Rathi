@@ -59,7 +59,7 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
           </span>
         </div>
         <div className="flex justify-between text-gray-600">
-          <span>Tax</span>
+          <span>Estimated GST</span>
           <span>{formatPrice(tax)}</span>
         </div>
         <div className="flex justify-between text-lg font-bold text-gray-800 pt-2 border-t border-gray-200">
