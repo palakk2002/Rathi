@@ -32,7 +32,7 @@ const MobileTrackOrder = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!order && orderId) {
+      if (orderId) {
         const privateOrder = await fetchOrderById(orderId);
         if (!privateOrder) {
           await fetchPublicTrackingOrder(orderId);
@@ -43,7 +43,7 @@ const MobileTrackOrder = () => {
     return () => {
       mounted = false;
     };
-  }, [order, orderId, fetchOrderById, fetchPublicTrackingOrder]);
+  }, [orderId, fetchOrderById, fetchPublicTrackingOrder]);
 
   useEffect(() => {
     if (!isResolving && !order) {

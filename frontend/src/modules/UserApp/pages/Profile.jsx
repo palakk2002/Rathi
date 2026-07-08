@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiShield, FiSlash, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -146,6 +146,7 @@ const MobileProfile = () => {
       link: '/notifications',
       badge: unreadNotificationCount > 0 ? unreadNotificationCount : null,
     },
+    { id: 'codStats', label: 'COD Account Standing', icon: FiShield, color: 'text-red-600', bg: 'bg-red-50' },
     { id: 'password', label: 'Change Password', icon: FiLock, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
@@ -178,7 +179,7 @@ const MobileProfile = () => {
                   <FiArrowLeft className="text-xl text-gray-700" />
                 </button>
                 <h1 className="text-xl font-bold text-gray-800">
-                  {activeTab === 'menu' ? 'My Account' : activeTab === 'personal' ? 'Personal Info' : 'Security'}
+                  {activeTab === 'menu' ? 'My Account' : activeTab === 'personal' ? 'Personal Info' : activeTab === 'codStats' ? 'COD Standing' : 'Security'}
                 </h1>
               </div>
             </div>
@@ -197,6 +198,16 @@ const MobileProfile = () => {
                     >
                       <FiUser className="text-lg" />
                       Personal Info
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('codStats')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium ${activeTab === 'codStats'
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                      <FiShield className="text-lg" />
+                      COD Standing
                     </button>
                     <button
                       onClick={() => setActiveTab('password')}
@@ -600,6 +611,97 @@ const MobileProfile = () => {
                         {isLoading ? 'Changing Password...' : 'Change Password'}
                       </button>
                     </form>
+                  </motion.div>
+                )}
+
+                {/* COD Stats Tab */}
+                {activeTab === 'codStats' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-card rounded-2xl p-4 lg:p-8 bg-white border border-gray-150 shadow-sm"
+                  >
+                    <h2 className="text-lg font-bold text-gray-805 mb-1">Cash on Delivery Standing</h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                      View your Cash on Delivery status, warnings history, and payment method eligibility.
+                    </p>
+
+                    {/* Stats Cards Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-center">
+                        <p className="text-xs font-semibold text-gray-500 uppercase">Total COD Orders</p>
+                        <p className="text-2xl font-bold text-gray-800 mt-1">{user?.codStats?.totalCodOrders || 0}</p>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
+                        <p className="text-xs font-semibold text-green-700 uppercase">Delivered COD</p>
+                        <p className="text-2xl font-bold text-green-800 mt-1">{user?.codStats?.deliveredCodOrders || 0}</p>
+                      </div>
+                      <div className="bg-red-50 p-4 rounded-xl border border-red-100 text-center">
+                        <p className="text-xs font-semibold text-red-700 uppercase">Cancelled COD</p>
+                        <p className="text-2xl font-bold text-red-800 mt-1">{user?.codStats?.cancelledCodOrders || 0}</p>
+                      </div>
+                      <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-center">
+                        <p className="text-xs font-semibold text-purple-700 uppercase">Cancellation Rate</p>
+                        <p className="text-2xl font-bold text-purple-800 mt-1">
+                          {user?.codStats?.cancellationRate || 0}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Status Alert Banner */}
+                    {user?.codStats?.isCodBlacklisted ? (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-sm mb-6 flex items-start gap-2">
+                        <FiSlash className="text-red-650 text-xl mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold">COD Payment Option Restricted</p>
+                          <p className="text-xs text-red-700 mt-1">
+                            Your Cash on Delivery privileges have been disabled due to a high cancellation percentage. 
+                            Please complete future purchases using online payment methods.
+                          </p>
+                        </div>
+                      </div>
+                    ) : user?.codStats?.warningCount > 0 ? (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm mb-6 flex items-start gap-2">
+                        <FiAlertTriangle className="text-yellow-600 text-xl mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold">Account Warning Active</p>
+                          <p className="text-xs text-yellow-700 mt-1">
+                            You have active warning(s) on your account due to multiple COD order cancellations. 
+                            Please ensure you complete your upcoming orders. Accounts with more than 40% COD cancellation rate will be restricted.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm mb-6 flex items-start gap-2">
+                        <FiCheckCircle className="text-green-600 text-xl mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold">Good Standing</p>
+                          <p className="text-xs text-green-700 mt-1">
+                            Your Cash on Delivery access is allowed and in good standing. Keep completing your orders to maintain access!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Warnings List */}
+                    {user?.codStats?.warnings?.length > 0 && (
+                      <div>
+                        <h3 className="font-bold text-gray-805 text-sm mb-3">Warnings Received</h3>
+                        <div className="space-y-3">
+                          {user.codStats.warnings.map((warning, idx) => (
+                            <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-start gap-2">
+                              <FiAlertTriangle className="text-yellow-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs text-gray-400 font-semibold">
+                                  {new Date(warning.issuedAt).toLocaleDateString()}
+                                </p>
+                                <p className="text-sm text-gray-705 mt-0.5">{warning.reason}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </div>

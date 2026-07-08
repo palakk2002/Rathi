@@ -10,6 +10,7 @@ import {
   FiArrowLeft,
   FiShoppingBag,
   FiTag,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiLock } from "react-icons/fi";
@@ -618,6 +619,18 @@ const MobileCheckout = () => {
                       <FiCreditCard className="text-primary-600" />
                       Payment Method
                     </h2>
+                    {user?.codStats?.warningCount > 0 && !user?.codStats?.isCodBlacklisted && (
+                      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm flex items-start gap-2">
+                        <FiAlertTriangle className="text-yellow-600 text-lg mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold">Active Account Warnings</p>
+                          <p className="text-xs text-yellow-700 mt-0.5">
+                            You have received {user.codStats.warningCount} warning(s) regarding Cash on Delivery cancellations. 
+                            Please complete your future COD orders. Accounts exceeding a 40% cancellation rate will have Cash on Delivery disabled.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-3 mb-6">
                       {["card", "cash", "bank"].map((method) => {
                         const isCod = method === "cash";

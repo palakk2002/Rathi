@@ -153,9 +153,6 @@ export const useOrderStore = create(
       },
 
       fetchOrderById: async (orderId) => {
-        const existing = get().orders.find((order) => String(order.id) === String(orderId));
-        if (existing) return existing;
-
         try {
           const response = await api.get(`/user/orders/${orderId}`);
           const payload = response?.data ?? response;
@@ -169,14 +166,13 @@ export const useOrderStore = create(
           return normalized;
         } catch (error) {
           set({ lastError: error?.message || 'Failed to fetch order.' });
+          const existing = get().orders.find((order) => String(order.id) === String(orderId));
+          if (existing) return existing;
           return null;
         }
       },
 
       fetchPublicTrackingOrder: async (orderId) => {
-        const existing = get().orders.find((order) => String(order.id) === String(orderId));
-        if (existing) return existing;
-
         try {
           const response = await api.get(`/orders/track/${orderId}`);
           const payload = response?.data ?? response;
@@ -190,6 +186,8 @@ export const useOrderStore = create(
           return normalized;
         } catch (error) {
           set({ lastError: error?.message || 'Failed to track order.' });
+          const existing = get().orders.find((order) => String(order.id) === String(orderId));
+          if (existing) return existing;
           return null;
         }
       },
