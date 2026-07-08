@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiShoppingBag, FiMapPin } from 'react-icons/fi';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiShoppingBag, FiMapPin, FiFileText, FiAlertTriangle } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from "../store/vendorAuthStore";
+import { useCategoryStore } from "../../../shared/store/categoryStore";
 import toast from 'react-hot-toast';
 
 const VendorRegister = () => {
   const navigate = useNavigate();
   const { register: registerVendor, isLoading } = useVendorAuthStore();
+  const { categories: allCategories, initialize: initCategories } = useCategoryStore();
+
+  useEffect(() => {
+    initCategories();
+  }, [initCategories]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,12 +30,41 @@ const VendorRegister = () => {
       zipCode: '',
       country: 'USA',
     },
+    categories: [],
+    fssaiLicenseNumber: '',
+    fssaiLicenseDocument: null,
   });
+
+  const isFoodSelected = () => {
+    return formData.categories.some(catId => {
+      const catObj = allCategories.find(c => String(c.id || c._id) === String(catId));
+      return catObj && (String(catObj.name || '').toLowerCase() === 'food' || String(catObj.slug || '').toLowerCase() === 'food');
+    });
+  };
+
+  const handleCategoryChange = (catId) => {
+    const isChecked = formData.categories.includes(catId);
+    const updated = isChecked 
+      ? formData.categories.filter(id => id !== catId)
+      : [...formData.categories, catId];
+    setFormData({
+      ...formData,
+      categories: updated
+    });
+  };
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, files } = e.target;
+
+    if (name === 'fssaiLicenseDocument') {
+      setFormData({
+        ...formData,
+        [name]: files?.[0] || null,
+      });
+      return;
+    }
 
     if (name.startsWith('address.')) {
       const addressField = name.split('.')[1];
@@ -57,6 +92,23 @@ const VendorRegister = () => {
       return;
     }
 
+    if (formData.categories.length === 0) {
+      toast.error('Please select at least one category');
+      return;
+    }
+
+    const foodSelected = isFoodSelected();
+    if (foodSelected) {
+      if (!formData.fssaiLicenseNumber || !formData.fssaiLicenseNumber.trim()) {
+        toast.error('FSSAI License Number is required for food category');
+        return;
+      }
+      if (!formData.fssaiLicenseDocument) {
+        toast.error('FSSAI License Document file is required for food category');
+        return;
+      }
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -68,15 +120,22 @@ const VendorRegister = () => {
     }
 
     try {
-      const result = await registerVendor({
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-        phone: formData.phone.trim(),
-        storeName: formData.storeName.trim(),
-        storeDescription: formData.storeDescription.trim(),
-        address: formData.address,
-      });
+      const fd = new FormData();
+      fd.append('name', formData.name.trim());
+      fd.append('email', formData.email.trim().toLowerCase());
+      fd.append('password', formData.password);
+      fd.append('phone', formData.phone.trim());
+      fd.append('storeName', formData.storeName.trim());
+      fd.append('storeDescription', formData.storeDescription.trim());
+      fd.append('address', JSON.stringify(formData.address));
+      fd.append('categories', JSON.stringify(formData.categories));
+      
+      if (foodSelected) {
+        fd.append('fssaiLicenseNumber', formData.fssaiLicenseNumber.trim());
+        fd.append('fssaiLicenseDocument', formData.fssaiLicenseDocument);
+      }
+
+      const result = await registerVendor(fd);
 
       toast.success(result.message || 'Registration successful!');
       // Navigate to verification page
@@ -200,6 +259,84 @@ const VendorRegister = () => {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Product Categories Selection */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Product Categories</h3>
+              <p className="text-xs text-gray-500 mb-4">Select categories of products you plan to sell. You can select multiple.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white p-4 rounded-xl border border-gray-200">
+                {allCategories && allCategories.map((cat) => {
+                  const catId = cat.id || cat._id;
+                  const isChecked = formData.categories.includes(catId);
+                  return (
+                    <label key={catId} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleCategoryChange(catId)}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">{cat.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Conditional FSSAI Fields */}
+            {isFoodSelected() && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="bg-yellow-50/50 border border-yellow-200 rounded-2xl p-5 space-y-4"
+              >
+                <div className="flex items-start gap-2 text-yellow-800">
+                  <FiAlertTriangle className="text-yellow-600 text-lg mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-sm">FSSAI License Requirement</h4>
+                    <p className="text-xs text-yellow-700 mt-0.5">
+                      Since you selected the Food category, you must provide your FSSAI License details to register.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-750 mb-2">
+                    FSSAI License Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <FiFileText className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      name="fssaiLicenseNumber"
+                      value={formData.fssaiLicenseNumber}
+                      onChange={handleChange}
+                      placeholder="Enter 14-digit FSSAI License Number"
+                      className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-250 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-750 mb-2">
+                    Upload FSSAI License Document <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="fssaiLicenseDocument"
+                      onChange={handleChange}
+                      accept=".pdf,image/*"
+                      className="w-full px-4 py-2.5 bg-white border-2 border-gray-250 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:text-primary-700 text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
 
           {/* Address Information */}

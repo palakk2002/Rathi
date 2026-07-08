@@ -3,6 +3,7 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
 import Admin from '../../../models/Admin.model.js';
+import Category from '../../../models/Category.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { sendOTP } from '../../../services/otp.service.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -16,11 +17,38 @@ import {
 
 // POST /api/vendor/auth/register
 export const register = asyncHandler(async (req, res) => {
-    const { name, email, password, phone, storeName, storeDescription, address } = req.body;
+    const { name, email, password, phone, storeName, storeDescription, address, categories, fssaiLicenseNumber } = req.body;
 
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const existing = await Vendor.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
+
+    const categoriesArray = Array.isArray(categories) ? categories : [];
+    if (categoriesArray.length === 0) {
+        throw new ApiError(400, 'At least one product category is required.');
+    }
+
+    // Check if food category is selected (by name or slug 'food')
+    const dbCategories = await Category.find({ _id: { $in: categoriesArray } });
+    const hasFoodCategory = dbCategories.some(
+        (cat) =>
+            String(cat.name || '').toLowerCase() === 'food' ||
+            String(cat.slug || '').toLowerCase() === 'food'
+    );
+
+    let fssaiLicenseDocument = undefined;
+    if (hasFoodCategory) {
+        if (!fssaiLicenseNumber || !String(fssaiLicenseNumber).trim()) {
+            throw new ApiError(400, 'FSSAI License Number is required for food category.');
+        }
+        if (!req.file?.path) {
+            throw new ApiError(400, 'FSSAI License Document file is required for food category.');
+        }
+
+        const { uploadLocalFileToCloudinaryAndCleanup } = await import('../../../services/upload.service.js');
+        const uploaded = await uploadLocalFileToCloudinaryAndCleanup(req.file.path, 'vendors/documents');
+        fssaiLicenseDocument = uploaded.url;
+    }
 
     const vendor = await Vendor.create({
         name: String(name || '').trim(),
@@ -30,6 +58,9 @@ export const register = asyncHandler(async (req, res) => {
         storeName: String(storeName || '').trim(),
         storeDescription: String(storeDescription || '').trim(),
         address,
+        categories: categoriesArray,
+        fssaiLicenseNumber: hasFoodCategory ? String(fssaiLicenseNumber).trim() : undefined,
+        fssaiLicenseDocument: hasFoodCategory ? fssaiLicenseDocument : undefined,
         status: 'pending'
     });
     await sendOTP(vendor, 'vendor_verification');
@@ -224,7 +255,7 @@ export const logout = asyncHandler(async (req, res) => {
 
 // GET /api/vendor/auth/profile
 export const getProfile = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry');
+    const vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry').populate('categories', 'name slug');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, vendor, 'Profile fetched.'));
 });

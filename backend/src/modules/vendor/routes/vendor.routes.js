@@ -39,8 +39,22 @@ import { uploadSingle, uploadMultiple, uploadDocumentSingle } from '../../../mid
 const router = Router();
 const vendorAuth = [authenticate, authorize('vendor'), enforceAccountStatus];
 
+const parseRegisterFormData = (req, res, next) => {
+    if (req.body.address && typeof req.body.address === 'string') {
+        try {
+            req.body.address = JSON.parse(req.body.address);
+        } catch (_) {}
+    }
+    if (req.body.categories && typeof req.body.categories === 'string') {
+        try {
+            req.body.categories = JSON.parse(req.body.categories);
+        } catch (_) {}
+    }
+    next();
+};
+
 // Auth
-router.post('/auth/register', authLimiter, validate(registerSchema), authController.register);
+router.post('/auth/register', authLimiter, uploadSingle('fssaiLicenseDocument'), parseRegisterFormData, validate(registerSchema), authController.register);
 router.post('/auth/verify-otp', validate(verifyOtpSchema), authController.verifyOTP);
 router.post('/auth/resend-otp', validate(resendOtpSchema), authController.resendOTP);
 router.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);

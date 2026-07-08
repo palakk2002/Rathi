@@ -14,6 +14,8 @@ export const registerSchema = Joi.object({
         zipCode: Joi.string().allow('').optional(),
         country: Joi.string().allow('').optional(),
     }).optional(),
+    categories: Joi.array().items(Joi.string()).min(1).required(),
+    fssaiLicenseNumber: Joi.string().trim().allow('').optional(),
 });
 
 export const loginSchema = Joi.object({

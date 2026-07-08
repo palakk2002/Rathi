@@ -392,6 +392,40 @@ const VendorDetail = () => {
                         </p>
                       </div>
                     </div>
+                    {vendor.categories && vendor.categories.length > 0 && (
+                      <div className="flex items-start gap-3 pt-2">
+                        <FiFileText className="text-gray-400 mt-1" />
+                        <div>
+                          <p className="text-xs text-gray-600">Product Categories</p>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {vendor.categories.map((cat) => (
+                              <span key={cat._id || cat.id} className="px-2.5 py-1 bg-primary-50 border border-primary-100 text-primary-700 rounded-lg text-xs font-semibold">
+                                {cat.name || cat}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {vendor.fssaiLicenseNumber && (
+                      <div className="flex items-start gap-3 pt-3 mt-3 border-t border-gray-100">
+                        <FiFileText className="text-gray-400 mt-1" />
+                        <div>
+                          <p className="text-xs text-gray-600">FSSAI License Number</p>
+                          <p className="font-bold text-gray-800 mt-0.5">{vendor.fssaiLicenseNumber}</p>
+                          {vendor.fssaiLicenseDocument && (
+                            <a
+                              href={vendor.fssaiLicenseDocument}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline mt-1.5 inline-flex items-center gap-1"
+                            >
+                              View FSSAI License Document &rarr;
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

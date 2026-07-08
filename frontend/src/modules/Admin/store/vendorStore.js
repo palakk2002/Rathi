@@ -51,14 +51,6 @@ export const useVendorStore = create((set, get) => ({
   getAllVendors: () => get().vendors,
 
   getVendor: async (id) => {
-    const existing = get().vendors.find(
-      (v) => String(v.id || v._id) === String(id)
-    );
-    if (existing) {
-      set({ selectedVendor: existing });
-      return existing;
-    }
-
     try {
       const response = await getVendorById(id);
       const vendor = normalizeVendor(response?.data ?? response);

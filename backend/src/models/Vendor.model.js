@@ -61,6 +61,9 @@ const vendorSchema = new mongoose.Schema(
         joinDate: { type: Date, default: Date.now },
         fcmTokens: { type: [String], default: [] },
         fcmTokenMobile: { type: [String], default: [] },
+        categories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
+        fssaiLicenseNumber: { type: String },
+        fssaiLicenseDocument: { type: String },
     },
     { timestamps: true }
 );
