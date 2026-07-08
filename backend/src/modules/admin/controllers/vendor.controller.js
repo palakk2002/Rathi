@@ -32,7 +32,7 @@ export const getAllVendors = asyncHandler(async (req, res) => {
     const skip = (numericPage - 1) * numericLimit;
     const filter = {};
 
-    const allowedStatuses = new Set(['pending', 'approved', 'suspended', 'rejected']);
+    const allowedStatuses = new Set(['pending', 'approved', 'suspended', 'rejected', 'action_required']);
     if (typeof status === 'string' && status !== 'all' && allowedStatuses.has(status)) {
         filter.status = status;
     }
@@ -70,16 +70,46 @@ export const getVendorDetail = asyncHandler(async (req, res) => {
 // PATCH /api/admin/vendors/:id/status
 export const updateVendorStatus = asyncHandler(async (req, res) => {
     const { status, reason } = req.body;
-    const allowed = ['approved', 'suspended', 'rejected'];
+    const allowed = ['approved', 'suspended', 'rejected', 'action_required'];
     if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
 
-    const vendor = await Vendor.findByIdAndUpdate(req.params.id, { status, suspensionReason: reason || '' }, { new: true });
+    const vendor = await Vendor.findById(req.params.id);
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    vendor.status = status;
+    if (status === 'suspended') {
+        vendor.suspensionReason = reason || '';
+    }
+
+    const adminId = req.user.id;
+    const adminName = req.user.name || 'Admin';
+
+    vendor.verificationTimeline.push({
+        status,
+        remarks: reason || `Vendor account status updated to ${status}.`,
+        updatedBy: adminId,
+        updatedByName: adminName,
+        updatedAt: new Date()
+    });
+
+    vendor.verificationAuditLog.push({
+        action: `status_change_${status}`,
+        details: `Administrator ${adminName} updated status to ${status}.${reason ? ` Reason/Remarks: ${reason}` : ''}`,
+        performedBy: {
+            id: adminId,
+            name: adminName,
+            role: 'admin'
+        },
+        timestamp: new Date()
+    });
+
+    await vendor.save();
 
     const statusMessageMap = {
         approved: `Your vendor account for ${vendor.storeName || vendor.name} has been approved.`,
         rejected: `Your vendor account for ${vendor.storeName || vendor.name} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
         suspended: `Your vendor account for ${vendor.storeName || vendor.name} has been suspended.${reason ? ` Reason: ${reason}` : ''}`,
+        action_required: `Your vendor account for ${vendor.storeName || vendor.name} requires action/re-upload.${reason ? ` Remarks: ${reason}` : ''}`,
     };
     const vendorMessage = statusMessageMap[status] || `Your vendor account status was updated to ${status}.`;
 
@@ -96,9 +126,10 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     });
 
     try {
+        const subjectStatus = status === 'action_required' ? 'Action Required' : `${status[0].toUpperCase()}${status.slice(1)}`;
         await sendEmail({
             to: vendor.email,
-            subject: `Vendor Account ${status[0].toUpperCase()}${status.slice(1)}`,
+            subject: `Vendor Account ${subjectStatus}`,
             text: vendorMessage,
             html: `<p>${vendorMessage}</p>`,
         });

@@ -14,6 +14,17 @@ export const registerSchema = Joi.object({
         zipCode: Joi.string().allow('').optional(),
         country: Joi.string().allow('').optional(),
     }).optional(),
+    businessAddress: Joi.object({
+        street: Joi.string().allow('').optional(),
+        city: Joi.string().allow('').optional(),
+        state: Joi.string().allow('').optional(),
+        zipCode: Joi.string().allow('').optional(),
+        country: Joi.string().allow('').optional(),
+    }).optional(),
+    businessType: Joi.string().valid('gst', 'non-gst').default('non-gst').optional(),
+    legalBusinessName: Joi.string().trim().allow('').optional(),
+    gstin: Joi.string().trim().allow('').optional(),
+    panNumber: Joi.string().trim().allow('').optional(),
     categories: Joi.array().items(Joi.string()).min(1).required(),
     fssaiLicenseNumber: Joi.string().trim().allow('').optional(),
 });

@@ -43,8 +43,18 @@ export const enforceAccountStatus = async (req, res, next) => {
             const vendor = await Vendor.findById(req.user.id).select('status isVerified').lean();
             if (!vendor) return next(new ApiError(401, 'Account not found.'));
             if (!vendor.isVerified) return next(new ApiError(403, 'Please verify your email first.'));
-            if (vendor.status !== 'approved') {
+            
+            const isRestrictedPath = 
+                req.originalUrl.startsWith('/api/vendor/auth/profile') ||
+                req.originalUrl.startsWith('/api/vendor/documents') ||
+                req.originalUrl.startsWith('/api/vendor/uploads/image') ||
+                req.originalUrl.startsWith('/api/vendor/uploads/images');
+            
+            if (vendor.status !== 'approved' && !isRestrictedPath) {
                 return next(new ApiError(403, `Vendor account is ${vendor.status}.`));
+            }
+            if (vendor.status === 'suspended') {
+                return next(new ApiError(403, 'Vendor account is suspended.'));
             }
             return next();
         }

@@ -120,14 +120,36 @@ const VendorDetail = () => {
     setEarningsSummary(summary);
   }, [vendor, commissions]);
 
-  const handleStatusUpdate = async (newStatus) => {
-    const success = await updateVendorStatus(vendor.id, newStatus);
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    status: null,
+  });
+  const [statusReason, setStatusReason] = useState("");
+  const [previewDoc, setPreviewDoc] = useState(null);
+
+  const handleStatusUpdate = async (newStatus, reason = "") => {
+    const success = await updateVendorStatus(vendor.id, newStatus, reason);
     if (success) {
-      setVendor({ ...vendor, status: newStatus });
       toast.success(`Vendor status updated to ${newStatus}`);
+      const data = await getVendor(id);
+      if (data) {
+        setVendor(data);
+        setCommissionRate(((data.commissionRate || 0) * 100).toFixed(1));
+      }
     } else {
       toast.error("Failed to update vendor status");
     }
+  };
+
+  const handleStatusSubmit = async () => {
+    const { status } = statusModal;
+    if ((status === "rejected" || status === "action_required" || status === "suspended") && !statusReason.trim()) {
+      toast.error("A reason / remark is mandatory");
+      return;
+    }
+    await handleStatusUpdate(status, statusReason.trim());
+    setStatusModal({ isOpen: false, status: null });
+    setStatusReason("");
   };
 
   const handleCommissionUpdate = async () => {
@@ -283,29 +305,45 @@ const VendorDetail = () => {
             <p className="text-xs text-gray-500">Vendor ID: {vendor.id}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge
             variant={
               vendor.status === "approved"
                 ? "success"
                 : vendor.status === "pending"
                   ? "warning"
-                  : "error"
+                  : vendor.status === "action_required"
+                    ? "info"
+                    : "error"
             }>
-            {vendor.status?.toUpperCase()}
+            {vendor.status === "action_required" ? "ACTION REQUIRED" : vendor.status?.toUpperCase()}
           </Badge>
-          {vendor.status === "pending" && (
-            <button
-              onClick={() => handleStatusUpdate("approved")}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
-              <FiCheckCircle />
-              Approve
-            </button>
+          {(vendor.status === "pending" || vendor.status === "action_required") && (
+            <>
+              <button
+                onClick={() => setStatusModal({ isOpen: true, status: "approved" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold">
+                <FiCheckCircle />
+                Approve
+              </button>
+              <button
+                onClick={() => setStatusModal({ isOpen: true, status: "rejected" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold">
+                <FiXCircle />
+                Reject
+              </button>
+              <button
+                onClick={() => setStatusModal({ isOpen: true, status: "action_required" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm font-semibold">
+                <FiClock />
+                Request Re-upload
+              </button>
+            </>
           )}
           {vendor.status === "approved" && (
             <button
-              onClick={() => handleStatusUpdate("suspended")}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
+              onClick={() => setStatusModal({ isOpen: true, status: "suspended" })}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-650 text-white rounded-lg hover:bg-red-755 transition-colors text-sm font-semibold">
               <FiXCircle />
               Suspend
             </button>
@@ -315,16 +353,16 @@ const VendorDetail = () => {
 
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="flex border-b border-gray-200">
-          {["overview", "orders", "commissions", "settings"].map((tab) => (
+        <div className="flex border-b border-gray-200 overflow-x-auto">
+          {["overview", "orders", "commissions", "timeline", "settings"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-semibold text-sm transition-colors ${activeTab === tab
+              className={`px-6 py-3 font-semibold text-sm transition-colors whitespace-nowrap ${activeTab === tab
                 ? "text-primary-600 border-b-2 border-primary-600"
                 : "text-gray-600 hover:text-gray-800"
                 }`}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === "timeline" ? "Verification History" : (tab.charAt(0).toUpperCase() + tab.slice(1))}
             </button>
           ))}
         </div>
@@ -396,7 +434,7 @@ const VendorDetail = () => {
                       <div className="flex items-start gap-3 pt-2">
                         <FiFileText className="text-gray-400 mt-1" />
                         <div>
-                          <p className="text-xs text-gray-600">Product Categories</p>
+                          <p className="text-xs text-gray-650">Product Categories</p>
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {vendor.categories.map((cat) => (
                               <span key={cat._id || cat.id} className="px-2.5 py-1 bg-primary-50 border border-primary-100 text-primary-700 rounded-lg text-xs font-semibold">
@@ -411,17 +449,24 @@ const VendorDetail = () => {
                       <div className="flex items-start gap-3 pt-3 mt-3 border-t border-gray-100">
                         <FiFileText className="text-gray-400 mt-1" />
                         <div>
-                          <p className="text-xs text-gray-600">FSSAI License Number</p>
+                          <p className="text-xs text-gray-650">FSSAI License Number</p>
                           <p className="font-bold text-gray-800 mt-0.5">{vendor.fssaiLicenseNumber}</p>
                           {vendor.fssaiLicenseDocument && (
-                            <a
-                              href={vendor.fssaiLicenseDocument}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline mt-1.5 inline-flex items-center gap-1"
-                            >
-                              View FSSAI License Document &rarr;
-                            </a>
+                            <div className="flex gap-3 mt-1.5">
+                              <button
+                                onClick={() => setPreviewDoc({ url: vendor.fssaiLicenseDocument, name: "FSSAI License Document" })}
+                                className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline">
+                                Preview FSSAI &rarr;
+                              </button>
+                              <a
+                                href={vendor.fssaiLicenseDocument}
+                                download
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs font-semibold text-green-600 hover:text-green-700 hover:underline">
+                                Download
+                              </a>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -429,46 +474,156 @@ const VendorDetail = () => {
                   </div>
                 </div>
 
-                {/* Performance Stats */}
+                {/* Business Verification Details */}
                 <div>
                   <h2 className="text-lg font-bold text-gray-800 mb-4">
-                    Performance
+                    Business Verification Details
                   </h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <p className="text-xs text-blue-600 mb-1">Total Orders</p>
-                      <p className="text-2xl font-bold text-blue-800">
-                        {vendorOrders.length}
-                      </p>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <FiFileText className="text-gray-400 mt-1" />
+                      <div>
+                        <p className="text-xs text-gray-600">Business Type</p>
+                        <p className="font-semibold text-gray-800 uppercase">
+                          {vendor.businessType || "non-gst"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <p className="text-xs text-green-600 mb-1">
-                        Total Earnings
-                      </p>
-                      <p className="text-2xl font-bold text-green-800">
-                        {earningsSummary
-                          ? formatPrice(earningsSummary.totalEarnings)
-                          : formatPrice(0)}
-                      </p>
+                    {vendor.businessType === "gst" && (
+                      <>
+                        <div className="flex items-start gap-3">
+                          <FiUser className="text-gray-400 mt-1" />
+                          <div>
+                            <p className="text-xs text-gray-600">Legal Business Name</p>
+                            <p className="font-semibold text-gray-800">
+                              {vendor.legalBusinessName || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <FiFileText className="text-gray-400 mt-1" />
+                          <div>
+                            <p className="text-xs text-gray-600">GSTIN</p>
+                            <p className="font-bold text-gray-800">
+                              {vendor.gstin || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        {vendor.gstCertificate && (
+                          <div className="flex items-start gap-3">
+                            <FiFileText className="text-gray-400 mt-1" />
+                            <div>
+                              <p className="text-xs text-gray-600">GST Certificate</p>
+                              <div className="flex gap-3 mt-1">
+                                <button
+                                  onClick={() => setPreviewDoc({ url: vendor.gstCertificate, name: "GST Certificate" })}
+                                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline">
+                                  Preview GST &rarr;
+                                </button>
+                                <a
+                                  href={vendor.gstCertificate}
+                                  download
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs font-semibold text-green-600 hover:text-green-700 hover:underline">
+                                  Download
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {vendor.businessAddress && (
+                          <div className="flex items-start gap-3">
+                            <FiMapPin className="text-gray-400 mt-1" />
+                            <div>
+                              <p className="text-xs text-gray-600">GST Registered Address</p>
+                              <p className="font-semibold text-gray-800">
+                                {vendor.businessAddress.street || ""}
+                                {vendor.businessAddress.city && `, ${vendor.businessAddress.city}`}
+                                {vendor.businessAddress.state && `, ${vendor.businessAddress.state}`}
+                                {vendor.businessAddress.zipCode && ` ${vendor.businessAddress.zipCode}`}
+                                {vendor.businessAddress.country && `, ${vendor.businessAddress.country}`}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div className="flex items-start gap-3">
+                      <FiFileText className="text-gray-400 mt-1" />
+                      <div>
+                        <p className="text-xs text-gray-600">PAN Number</p>
+                        <p className="font-bold text-gray-800">
+                          {vendor.panNumber || "N/A"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="bg-yellow-50 rounded-lg p-4">
-                      <p className="text-xs text-yellow-600 mb-1">
-                        Pending Earnings
-                      </p>
-                      <p className="text-2xl font-bold text-yellow-800">
-                        {earningsSummary
-                          ? formatPrice(earningsSummary.pendingEarnings)
-                          : formatPrice(0)}
-                      </p>
-                    </div>
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <p className="text-xs text-purple-600 mb-1">
-                        Commission Rate
-                      </p>
-                      <p className="text-2xl font-bold text-purple-800">
-                        {((vendor.commissionRate || 0) * 100).toFixed(1)}%
-                      </p>
-                    </div>
+                    {vendor.panCardDocument && (
+                      <div className="flex items-start gap-3">
+                        <FiFileText className="text-gray-400 mt-1" />
+                        <div>
+                          <p className="text-xs text-gray-600">PAN Card Document</p>
+                          <div className="flex gap-3 mt-1">
+                            <button
+                              onClick={() => setPreviewDoc({ url: vendor.panCardDocument, name: "PAN Card Document" })}
+                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline">
+                              Preview PAN &rarr;
+                            </button>
+                            <a
+                              href={vendor.panCardDocument}
+                              download
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-semibold text-green-600 hover:text-green-700 hover:underline">
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Stats */}
+              <div className="pt-6 border-t border-gray-150">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">
+                  Performance
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <p className="text-xs text-blue-600 mb-1">Total Orders</p>
+                    <p className="text-2xl font-bold text-blue-800">
+                      {vendorOrders.length}
+                    </p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <p className="text-xs text-green-600 mb-1">
+                      Total Earnings
+                    </p>
+                    <p className="text-2xl font-bold text-green-800">
+                      {earningsSummary
+                        ? formatPrice(earningsSummary.totalEarnings)
+                        : formatPrice(0)}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-4">
+                    <p className="text-xs text-yellow-600 mb-1">
+                      Pending Earnings
+                    </p>
+                    <p className="text-2xl font-bold text-yellow-800">
+                      {earningsSummary
+                        ? formatPrice(earningsSummary.pendingEarnings)
+                        : formatPrice(0)}
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <p className="text-xs text-purple-600 mb-1">
+                      Commission Rate
+                    </p>
+                    <p className="text-2xl font-bold text-purple-800">
+                      {((vendor.commissionRate || 0) * 100).toFixed(1)}%
+                    </p>
                   </div>
                 </div>
               </div>
@@ -514,6 +669,75 @@ const VendorDetail = () => {
                   No commission records found
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Timeline Tab */}
+          {activeTab === "timeline" && (
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800 mb-4">
+                  Verification Timeline
+                </h2>
+                {vendor.verificationTimeline && vendor.verificationTimeline.length > 0 ? (
+                  <div className="relative border-l border-gray-200 ml-3 space-y-6">
+                    {vendor.verificationTimeline.map((item, idx) => (
+                      <div key={idx} className="mb-6 ml-6">
+                        <span className="absolute -left-3 flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full ring-8 ring-white">
+                          <FiClock className="text-blue-600 text-xs" />
+                        </span>
+                        <h3 className="flex items-center mb-1 text-sm font-semibold text-gray-800">
+                          Status: <span className="uppercase ml-1 text-primary-600 font-bold">{item.status}</span>
+                        </h3>
+                        <time className="block mb-2 text-xs font-normal leading-none text-gray-400">
+                          {new Date(item.updatedAt).toLocaleString()} by {item.updatedByName || "System"}
+                        </time>
+                        <p className="text-sm font-normal text-gray-600">
+                          {item.remarks || "No remarks provided."}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No timeline events recorded yet.</p>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">
+                  Verification Audit Log
+                </h2>
+                {vendor.verificationAuditLog && vendor.verificationAuditLog.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-600">
+                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3">Action</th>
+                          <th className="px-4 py-3">Details</th>
+                          <th className="px-4 py-3">Performed By</th>
+                          <th className="px-4 py-3">Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vendor.verificationAuditLog.map((log, idx) => (
+                          <tr key={idx} className="bg-white border-b hover:bg-gray-50">
+                            <td className="px-4 py-3 font-semibold text-gray-800">{log.action}</td>
+                            <td className="px-4 py-3">{log.details}</td>
+                            <td className="px-4 py-3">
+                              {log.performedBy?.name} ({log.performedBy?.role})
+                            </td>
+                            <td className="px-4 py-3 text-xs">
+                              {new Date(log.timestamp).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No audit log records found.</p>
+                )}
+              </div>
             </div>
           )}
 
@@ -572,6 +796,91 @@ const VendorDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-gray-800">{previewDoc.name}</h3>
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="text-gray-500 hover:text-gray-800 font-bold px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                Close
+              </button>
+            </div>
+            <div className="flex-1 bg-gray-100 p-4">
+              {previewDoc.url.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={previewDoc.url}
+                  title={previewDoc.name}
+                  className="w-full h-full border-0 rounded-xl"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center overflow-auto">
+                  <img
+                    src={previewDoc.url}
+                    alt={previewDoc.name}
+                    className="max-w-full max-h-full object-contain rounded-xl shadow"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Verification Action Modal */}
+      {statusModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 capitalize">
+              {statusModal.status === "approved" ? "Approve Seller?" : statusModal.status === "action_required" ? "Request Document Re-upload?" : `${statusModal.status} Seller?`}
+            </h3>
+            <p className="text-sm text-gray-650 mb-4">
+              {statusModal.status === "approved"
+                ? "Are you sure you want to approve this seller? They will be allowed to start listing and selling products immediately."
+                : statusModal.status === "action_required"
+                  ? "Specify what corrections or documents need to be re-uploaded. The seller will see these remarks on their dashboard."
+                  : "Provide a reason/remarks for rejecting this seller application."}
+            </p>
+            {(statusModal.status === "rejected" || statusModal.status === "action_required" || statusModal.status === "suspended") && (
+              <div className="mb-4">
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Remarks / Reason <span className="text-red-500">*</span></label>
+                <textarea
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder="e.g. Please upload a clearer copy of the GST Certificate."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                  required
+                />
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setStatusModal({ isOpen: false, status: null });
+                  setStatusReason("");
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-650 rounded-xl hover:bg-gray-50 transition-colors text-sm font-semibold">
+                Cancel
+              </button>
+              <button
+                onClick={handleStatusSubmit}
+                className={`px-4 py-2 text-white rounded-xl transition-colors text-sm font-semibold ${
+                  statusModal.status === "approved"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : statusModal.status === "action_required"
+                      ? "bg-amber-500 hover:bg-amber-600"
+                      : "bg-red-650 hover:bg-red-755"
+                }`}>
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

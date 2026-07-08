@@ -35,6 +35,20 @@ const VendorDashboard = () => {
   useEffect(() => {
     if (!vendorId) return;
 
+    const syncProfile = async () => {
+      try {
+        const { getVendorProfile } = await import("../services/vendorService");
+        const profileRes = await getVendorProfile();
+        const profile = profileRes?.data ?? profileRes;
+        if (profile) {
+          useVendorAuthStore.setState({ vendor: profile });
+        }
+      } catch (err) {
+        console.warn("Failed to sync vendor profile", err);
+      }
+    };
+    syncProfile();
+
     // Load products into the product store (reuse if already fetched)
     if (products.length === 0) {
       fetchProducts();
@@ -148,6 +162,49 @@ const VendorDashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Verification Status Banner */}
+      {vendor && vendor.status !== 'approved' && (
+        <div className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
+          vendor.status === 'pending'
+            ? 'bg-blue-50 border-blue-200 text-blue-800'
+            : vendor.status === 'action_required'
+              ? 'bg-amber-50 border-amber-200 text-amber-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          <div className="space-y-1">
+            <h3 className="font-bold text-base flex items-center gap-2">
+              <span className="capitalize">{vendor.status === 'action_required' ? 'action required' : vendor.status}</span> Verification Status
+            </h3>
+            {vendor.status === 'pending' && (
+              <p className="text-sm opacity-90">
+                Your business documents are pending administrator review. Once verified, you will be able to manage your store catalog and receive orders.
+              </p>
+            )}
+            {vendor.status === 'action_required' && (
+              <p className="text-sm opacity-90">
+                Remarks from Admin: <strong>{vendor.verificationTimeline?.[vendor.verificationTimeline.length - 1]?.remarks || 'See profile settings for details.'}</strong>
+              </p>
+            )}
+            {vendor.status === 'rejected' && (
+              <p className="text-sm opacity-90">
+                Remarks from Admin: <strong>{vendor.suspensionReason || 'Please contact support.'}</strong>
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => navigate('/vendor/settings')}
+            className={`px-4 py-2 text-sm font-semibold rounded-xl whitespace-nowrap shadow-sm transition-colors ${
+              vendor.status === 'pending'
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : vendor.status === 'action_required'
+                  ? 'bg-amber-600 text-white hover:bg-amber-700'
+                  : 'bg-red-650 text-white hover:bg-red-755'
+            }`}>
+            Update Verification Details
+          </button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

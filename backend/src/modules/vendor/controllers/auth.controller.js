@@ -17,7 +17,22 @@ import {
 
 // POST /api/vendor/auth/register
 export const register = asyncHandler(async (req, res) => {
-    const { name, email, password, phone, storeName, storeDescription, address, categories, fssaiLicenseNumber } = req.body;
+    const { 
+        name, 
+        email, 
+        password, 
+        phone, 
+        storeName, 
+        storeDescription, 
+        address, 
+        categories, 
+        fssaiLicenseNumber,
+        businessType,
+        legalBusinessName,
+        gstin,
+        panNumber,
+        businessAddress
+    } = req.body;
 
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const existing = await Vendor.findOne({ email: normalizedEmail });
@@ -36,18 +51,57 @@ export const register = asyncHandler(async (req, res) => {
             String(cat.slug || '').toLowerCase() === 'food'
     );
 
+    const { uploadLocalFileToCloudinaryAndCleanup } = await import('../../../services/upload.service.js');
+
     let fssaiLicenseDocument = undefined;
     if (hasFoodCategory) {
         if (!fssaiLicenseNumber || !String(fssaiLicenseNumber).trim()) {
             throw new ApiError(400, 'FSSAI License Number is required for food category.');
         }
-        if (!req.file?.path) {
+        const fssaiFile = req.files?.fssaiLicenseDocument?.[0];
+        if (!fssaiFile) {
             throw new ApiError(400, 'FSSAI License Document file is required for food category.');
         }
-
-        const { uploadLocalFileToCloudinaryAndCleanup } = await import('../../../services/upload.service.js');
-        const uploaded = await uploadLocalFileToCloudinaryAndCleanup(req.file.path, 'vendors/documents');
+        const uploaded = await uploadLocalFileToCloudinaryAndCleanup(fssaiFile.path, 'vendors/documents');
         fssaiLicenseDocument = uploaded.url;
+    }
+
+    let gstCertificateUrl = undefined;
+    let panCardDocumentUrl = undefined;
+
+    if (businessType === 'gst') {
+        if (!gstin || !String(gstin).trim()) {
+            throw new ApiError(400, 'GSTIN is required for GST Registered sellers.');
+        }
+        if (!legalBusinessName || !String(legalBusinessName).trim()) {
+            throw new ApiError(400, 'Legal Business Name is required for GST Registered sellers.');
+        }
+        if (!panNumber || !String(panNumber).trim()) {
+            throw new ApiError(400, 'PAN Number is required.');
+        }
+        const gstCertFile = req.files?.gstCertificate?.[0];
+        const panCardFile = req.files?.panCardDocument?.[0];
+        if (!gstCertFile) {
+            throw new ApiError(400, 'GST Certificate file is required for GST Registered sellers.');
+        }
+        if (!panCardFile) {
+            throw new ApiError(400, 'PAN Card Document file is required.');
+        }
+        const uploadedGst = await uploadLocalFileToCloudinaryAndCleanup(gstCertFile.path, 'vendors/documents');
+        gstCertificateUrl = uploadedGst.url;
+
+        const uploadedPan = await uploadLocalFileToCloudinaryAndCleanup(panCardFile.path, 'vendors/documents');
+        panCardDocumentUrl = uploadedPan.url;
+    } else {
+        if (!panNumber || !String(panNumber).trim()) {
+            throw new ApiError(400, 'PAN Number is required.');
+        }
+        const panCardFile = req.files?.panCardDocument?.[0];
+        if (!panCardFile) {
+            throw new ApiError(400, 'PAN Card Document file is required.');
+        }
+        const uploadedPan = await uploadLocalFileToCloudinaryAndCleanup(panCardFile.path, 'vendors/documents');
+        panCardDocumentUrl = uploadedPan.url;
     }
 
     const vendor = await Vendor.create({
@@ -58,10 +112,32 @@ export const register = asyncHandler(async (req, res) => {
         storeName: String(storeName || '').trim(),
         storeDescription: String(storeDescription || '').trim(),
         address,
+        businessAddress,
         categories: categoriesArray,
         fssaiLicenseNumber: hasFoodCategory ? String(fssaiLicenseNumber).trim() : undefined,
         fssaiLicenseDocument: hasFoodCategory ? fssaiLicenseDocument : undefined,
-        status: 'pending'
+        businessType: businessType || 'non-gst',
+        legalBusinessName: businessType === 'gst' ? String(legalBusinessName || '').trim() : undefined,
+        gstin: businessType === 'gst' ? String(gstin || '').trim() : undefined,
+        panNumber: String(panNumber || '').trim(),
+        gstCertificate: gstCertificateUrl,
+        panCardDocument: panCardDocumentUrl,
+        status: 'pending',
+        verificationTimeline: [{
+            status: 'pending',
+            remarks: 'Account registered. Email verification OTP sent.',
+            updatedByName: 'System',
+            updatedAt: new Date()
+        }],
+        verificationAuditLog: [{
+            action: 'register',
+            details: `Vendor registered successfully. Business type: ${businessType || 'non-gst'}.`,
+            performedBy: {
+                name: name,
+                role: 'vendor'
+            },
+            timestamp: new Date()
+        }]
     });
     await sendOTP(vendor, 'vendor_verification');
 
@@ -202,9 +278,7 @@ export const login = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findOne({ email }).select('+password');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'pending') throw new ApiError(403, 'Your account is pending admin approval.');
     if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
-    if (vendor.status === 'rejected') throw new ApiError(403, 'Your vendor application was rejected.');
 
     const isMatch = await vendor.comparePassword(password);
     if (!isMatch) throw new ApiError(401, 'Invalid credentials.');
@@ -222,9 +296,7 @@ export const refresh = asyncHandler(async (req, res) => {
 
     if (!vendor) throw new ApiError(401, 'Invalid refresh token.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'pending') throw new ApiError(403, 'Your account is pending admin approval.');
     if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
-    if (vendor.status === 'rejected') throw new ApiError(403, 'Your vendor application was rejected.');
 
     const tokens = await rotateRefreshSession(
         vendor,
@@ -275,9 +347,81 @@ export const updateProfile = asyncHandler(async (req, res) => {
         'shippingMethods',
         'handlingTime',
         'processingTime',
+        'businessType',
+        'legalBusinessName',
+        'gstin',
+        'panNumber',
+        'gstCertificate',
+        'panCardDocument',
+        'businessAddress',
     ];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
-    const vendor = await Vendor.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true }).select('-password -otp -otpExpiry');
+    
+    const currentVendor = await Vendor.findById(req.user.id);
+    if (!currentVendor) throw new ApiError(404, 'Vendor not found.');
+
+    const verificationFields = [
+        'businessType',
+        'legalBusinessName',
+        'gstin',
+        'panNumber',
+        'gstCertificate',
+        'panCardDocument',
+        'businessAddress'
+    ];
+
+    let requiresReverification = false;
+    let detailsStr = '';
+
+    for (const field of verificationFields) {
+        if (updates[field] !== undefined) {
+            const val1 = JSON.stringify(currentVendor[field]);
+            const val2 = JSON.stringify(updates[field]);
+            if (val1 !== val2) {
+                requiresReverification = true;
+                detailsStr += `${field} modified. `;
+            }
+        }
+    }
+
+    if (requiresReverification) {
+        if (currentVendor.status === 'approved') {
+            updates.status = 'pending';
+            updates.$push = {
+                verificationTimeline: {
+                    status: 'pending',
+                    remarks: `Business verification details modified. Re-verification required. Details: ${detailsStr}`,
+                    updatedByName: 'System',
+                    updatedAt: new Date()
+                },
+                verificationAuditLog: {
+                    action: 'profile_edit_reverification',
+                    details: `Vendor updated verification details: ${detailsStr}. Status reset to pending.`,
+                    performedBy: {
+                        id: currentVendor._id,
+                        name: currentVendor.name,
+                        role: 'vendor'
+                    },
+                    timestamp: new Date()
+                }
+            };
+        } else {
+            updates.$push = {
+                verificationAuditLog: {
+                    action: 'profile_edit',
+                    details: `Vendor updated verification details: ${detailsStr}`,
+                    performedBy: {
+                        id: currentVendor._id,
+                        name: currentVendor.name,
+                        role: 'vendor'
+                    },
+                    timestamp: new Date()
+                }
+            };
+        }
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true }).select('-password -otp -otpExpiry').populate('categories', 'name slug');
     res.status(200).json(new ApiResponse(200, vendor, 'Profile updated.'));
 });
 

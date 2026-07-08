@@ -34,7 +34,7 @@ import {
     updateProductSchema,
     productIdParamSchema,
 } from '../validators/product.validator.js';
-import { uploadSingle, uploadMultiple, uploadDocumentSingle } from '../../../middlewares/upload.js';
+import { uploadSingle, uploadMultiple, uploadDocumentSingle, uploadVendorRegistrationDocuments } from '../../../middlewares/upload.js';
 
 const router = Router();
 const vendorAuth = [authenticate, authorize('vendor'), enforceAccountStatus];
@@ -43,6 +43,11 @@ const parseRegisterFormData = (req, res, next) => {
     if (req.body.address && typeof req.body.address === 'string') {
         try {
             req.body.address = JSON.parse(req.body.address);
+        } catch (_) {}
+    }
+    if (req.body.businessAddress && typeof req.body.businessAddress === 'string') {
+        try {
+            req.body.businessAddress = JSON.parse(req.body.businessAddress);
         } catch (_) {}
     }
     if (req.body.categories && typeof req.body.categories === 'string') {
@@ -54,7 +59,7 @@ const parseRegisterFormData = (req, res, next) => {
 };
 
 // Auth
-router.post('/auth/register', authLimiter, uploadSingle('fssaiLicenseDocument'), parseRegisterFormData, validate(registerSchema), authController.register);
+router.post('/auth/register', authLimiter, uploadVendorRegistrationDocuments(), parseRegisterFormData, validate(registerSchema), authController.register);
 router.post('/auth/verify-otp', validate(verifyOtpSchema), authController.verifyOTP);
 router.post('/auth/resend-otp', validate(resendOtpSchema), authController.resendOTP);
 router.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);

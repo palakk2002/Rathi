@@ -28,11 +28,24 @@ const VendorRegister = () => {
       city: '',
       state: '',
       zipCode: '',
-      country: 'USA',
+      country: 'India',
+    },
+    businessAddress: {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: 'India',
     },
     categories: [],
     fssaiLicenseNumber: '',
     fssaiLicenseDocument: null,
+    businessType: 'non-gst', // 'gst' or 'non-gst'
+    legalBusinessName: '',
+    gstin: '',
+    panNumber: '',
+    gstCertificate: null,
+    panCardDocument: null,
   });
 
   const isFoodSelected = () => {
@@ -58,7 +71,7 @@ const VendorRegister = () => {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
 
-    if (name === 'fssaiLicenseDocument') {
+    if (name === 'fssaiLicenseDocument' || name === 'gstCertificate' || name === 'panCardDocument') {
       setFormData({
         ...formData,
         [name]: files?.[0] || null,
@@ -73,6 +86,15 @@ const VendorRegister = () => {
         address: {
           ...formData.address,
           [addressField]: value,
+        },
+      });
+    } else if (name.startsWith('businessAddress.')) {
+      const businessAddressField = name.split('.')[1];
+      setFormData({
+        ...formData,
+        businessAddress: {
+          ...formData.businessAddress,
+          [businessAddressField]: value,
         },
       });
     } else {
@@ -109,6 +131,31 @@ const VendorRegister = () => {
       }
     }
 
+    // Business verification validation
+    if (!formData.panNumber || !formData.panNumber.trim()) {
+      toast.error('PAN Number is required');
+      return;
+    }
+    if (!formData.panCardDocument) {
+      toast.error('PAN Card Document file is required');
+      return;
+    }
+
+    if (formData.businessType === 'gst') {
+      if (!formData.gstin || !formData.gstin.trim()) {
+        toast.error('GSTIN is required for GST Registered sellers');
+        return;
+      }
+      if (!formData.legalBusinessName || !formData.legalBusinessName.trim()) {
+        toast.error('Legal Business Name is required for GST Registered sellers');
+        return;
+      }
+      if (!formData.gstCertificate) {
+        toast.error('GST Certificate document is required for GST Registered sellers');
+        return;
+      }
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -129,10 +176,20 @@ const VendorRegister = () => {
       fd.append('storeDescription', formData.storeDescription.trim());
       fd.append('address', JSON.stringify(formData.address));
       fd.append('categories', JSON.stringify(formData.categories));
-      
+      fd.append('businessType', formData.businessType);
+      fd.append('panNumber', formData.panNumber.trim());
+      fd.append('panCardDocument', formData.panCardDocument);
+
       if (foodSelected) {
         fd.append('fssaiLicenseNumber', formData.fssaiLicenseNumber.trim());
         fd.append('fssaiLicenseDocument', formData.fssaiLicenseDocument);
+      }
+
+      if (formData.businessType === 'gst') {
+        fd.append('legalBusinessName', formData.legalBusinessName.trim());
+        fd.append('gstin', formData.gstin.trim());
+        fd.append('gstCertificate', formData.gstCertificate);
+        fd.append('businessAddress', JSON.stringify(formData.businessAddress));
       }
 
       const result = await registerVendor(fd);
@@ -256,6 +313,184 @@ const VendorRegister = () => {
                   placeholder="Describe your store and products..."
                   rows={3}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Business Verification Details */}
+          <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-200/60 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-800">Business Verification</h3>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Business Type <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="businessType"
+                    value="non-gst"
+                    checked={formData.businessType === 'non-gst'}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                  />
+                  Non-GST Registered
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="businessType"
+                    value="gst"
+                    checked={formData.businessType === 'gst'}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                  />
+                  GST Registered
+                </label>
+              </div>
+            </div>
+
+            {formData.businessType === 'gst' && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-750 mb-2">
+                      Legal Business Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="legalBusinessName"
+                      value={formData.legalBusinessName}
+                      onChange={handleChange}
+                      placeholder="As per GST certificate"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-750 mb-2">
+                      GSTIN <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="gstin"
+                      value={formData.gstin}
+                      onChange={handleChange}
+                      placeholder="e.g. 22AAAAA1111A1Z1"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-750 mb-2">
+                    Upload GST Certificate <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    name="gstCertificate"
+                    onChange={handleChange}
+                    accept=".pdf,image/*"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:text-primary-700 text-sm"
+                    required
+                  />
+                </div>
+
+                <div className="border-t border-gray-200/60 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">GST Business Address</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Street Address</label>
+                      <input
+                        type="text"
+                        name="businessAddress.street"
+                        value={formData.businessAddress.street}
+                        onChange={handleChange}
+                        placeholder="GST registered street address"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">City</label>
+                      <input
+                        type="text"
+                        name="businessAddress.city"
+                        value={formData.businessAddress.city}
+                        onChange={handleChange}
+                        placeholder="City"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">State</label>
+                      <input
+                        type="text"
+                        name="businessAddress.state"
+                        value={formData.businessAddress.state}
+                        onChange={handleChange}
+                        placeholder="State"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Zip Code</label>
+                      <input
+                        type="text"
+                        name="businessAddress.zipCode"
+                        value={formData.businessAddress.zipCode}
+                        onChange={handleChange}
+                        placeholder="Zip Code"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Country</label>
+                      <input
+                        type="text"
+                        name="businessAddress.country"
+                        value={formData.businessAddress.country}
+                        onChange={handleChange}
+                        placeholder="Country"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-200/60 pt-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-75 mb-2">
+                  PAN Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="panNumber"
+                  value={formData.panNumber}
+                  onChange={handleChange}
+                  placeholder="e.g. ABCDE1234F"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-75 mb-2">
+                  Upload PAN Card <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  name="panCardDocument"
+                  onChange={handleChange}
+                  accept=".pdf,image/*"
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:text-primary-700 text-sm"
+                  required
                 />
               </div>
             </div>

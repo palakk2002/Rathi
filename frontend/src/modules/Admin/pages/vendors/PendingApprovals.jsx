@@ -158,6 +158,10 @@ const PendingApprovals = () => {
   };
 
   const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      toast.error("Rejection reason is mandatory");
+      return;
+    }
     const success = await updateVendorStatus(
       actionModal.vendorId,
       "rejected",
@@ -189,21 +193,22 @@ const PendingApprovals = () => {
     } else if (actionModal.type === "reject") {
         return {
           title: "Reject Vendor Registration?",
-          message: `Are you sure you want to reject "${actionModal.vendorName}"? This action cannot be undone.`,
+          message: `Are you sure you want to reject "${actionModal.vendorName}"? A reason must be provided.`,
           confirmText: "Reject",
           onConfirm: handleReject,
           type: "danger",
           customContent: (
             <div className="mt-4">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Rejection Reason (optional)
+                Rejection Reason <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Provide a reason for rejection..."
+                placeholder="Provide a mandatory reason for rejection..."
+                required
               />
             </div>
           ),

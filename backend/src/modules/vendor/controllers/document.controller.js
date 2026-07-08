@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import VendorDocument from '../../../models/VendorDocument.model.js';
+import Vendor from '../../../models/Vendor.model.js';
 import {
     uploadLocalFileToCloudinaryAndCleanupWithType,
     deleteFromCloudinary,
@@ -60,6 +61,41 @@ export const createVendorDocument = asyncHandler(async (req, res) => {
             fileSize: req.file.size || 0,
             uploadedAt: new Date(),
         });
+
+        const vendor = await Vendor.findById(req.user.id);
+        if (vendor) {
+            if (vendor.status === 'approved') {
+                vendor.status = 'pending';
+                vendor.verificationTimeline.push({
+                    status: 'pending',
+                    remarks: `New document uploaded: ${name}. Re-verification required.`,
+                    updatedByName: 'System',
+                    updatedAt: new Date()
+                });
+                vendor.verificationAuditLog.push({
+                    action: 'document_upload_reverification',
+                    details: `Uploaded new document: ${name}. Status reset to pending.`,
+                    performedBy: {
+                        id: vendor._id,
+                        name: vendor.name,
+                        role: 'vendor'
+                    },
+                    timestamp: new Date()
+                });
+            } else {
+                vendor.verificationAuditLog.push({
+                    action: 'document_upload',
+                    details: `Uploaded new document: ${name}.`,
+                    performedBy: {
+                        id: vendor._id,
+                        name: vendor.name,
+                        role: 'vendor'
+                    },
+                    timestamp: new Date()
+                });
+            }
+            await vendor.save();
+        }
 
         await createNotification({
             recipientId: req.user.id,

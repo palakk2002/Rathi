@@ -12,7 +12,7 @@ const vendorSchema = new mongoose.Schema(
         storeDescription: { type: String },
         status: {
             type: String,
-            enum: ['pending', 'approved', 'suspended', 'rejected'],
+            enum: ['pending', 'approved', 'suspended', 'rejected', 'action_required'],
             default: 'pending',
             index: true,
         },
@@ -39,6 +39,44 @@ const vendorSchema = new mongoose.Schema(
             zipCode: String,
             country: String,
         },
+        businessAddress: {
+            street: String,
+            city: String,
+            state: String,
+            zipCode: String,
+            country: String,
+        },
+        businessType: {
+            type: String,
+            enum: ['gst', 'non-gst'],
+            default: 'non-gst',
+        },
+        legalBusinessName: { type: String },
+        gstin: { type: String },
+        panNumber: { type: String },
+        gstCertificate: { type: String },
+        panCardDocument: { type: String },
+        verificationTimeline: [
+            {
+                status: String,
+                remarks: String,
+                updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+                updatedByName: String,
+                updatedAt: { type: Date, default: Date.now },
+            }
+        ],
+        verificationAuditLog: [
+            {
+                action: String,
+                details: String,
+                performedBy: {
+                    id: mongoose.Schema.Types.ObjectId,
+                    name: String,
+                    role: String,
+                },
+                timestamp: { type: Date, default: Date.now },
+            }
+        ],
         bankDetails: {
             accountName: { type: String, select: false },
             accountNumber: { type: String, select: false },

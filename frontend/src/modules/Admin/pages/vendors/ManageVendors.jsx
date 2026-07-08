@@ -26,7 +26,7 @@ const ManageVendors = () => {
   const [orders, setOrders] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [activeTab, setActiveTab] = useState("all");
   const [actionModal, setActionModal] = useState({
     isOpen: false,
     type: null, // 'approve', 'suspend', 'commission'
@@ -100,12 +100,29 @@ const ManageVendors = () => {
       );
     }
 
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((vendor) => vendor.status === selectedStatus);
+    if (activeTab === "gst") {
+      filtered = filtered.filter((vendor) => vendor.businessType === "gst");
+    } else if (activeTab === "non-gst") {
+      filtered = filtered.filter((vendor) => vendor.businessType === "non-gst");
+    } else if (activeTab === "pending") {
+      filtered = filtered.filter((vendor) => vendor.status === "pending");
+    } else if (activeTab === "approved") {
+      filtered = filtered.filter((vendor) => vendor.status === "approved");
+    } else if (activeTab === "rejected") {
+      filtered = filtered.filter((vendor) => vendor.status === "rejected" || vendor.status === "action_required");
     }
 
     return filtered;
-  }, [vendors, searchQuery, selectedStatus]);
+  }, [vendors, searchQuery, activeTab]);
+
+  const tabs = [
+    { id: "all", label: "All Sellers" },
+    { id: "gst", label: "GST Sellers" },
+    { id: "non-gst", label: "Non-GST Sellers" },
+    { id: "pending", label: "Pending Verification" },
+    { id: "approved", label: "Verified Sellers" },
+    { id: "rejected", label: "Rejected Sellers" }
+  ];
 
   const columns = [
     {
@@ -155,9 +172,11 @@ const ManageVendors = () => {
               ? "success"
               : value === "pending"
                 ? "warning"
-                : "error"
+                : value === "action_required"
+                  ? "info"
+                  : "error"
           }>
-          {value?.toUpperCase() || "N/A"}
+          {value === "action_required" ? "ACTION REQUIRED" : (value?.toUpperCase() || "N/A")}
         </Badge>
       ),
     },
@@ -402,57 +421,84 @@ const ManageVendors = () => {
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        {/* Filters Section */}
+        {/* Tabs and Filters Section */}
         <div className="mb-6 pb-6 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
-            <div className="relative flex-1 w-full sm:min-w-[200px]">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search vendors..."
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
-              />
+          <div className="flex flex-col gap-4">
+            {/* Tabs */}
+            <div className="flex flex-wrap gap-2 border-b border-gray-150 pb-4">
+              {tabs.map((tab) => {
+                const count = vendors.filter((v) => {
+                  if (tab.id === "all") return true;
+                  if (tab.id === "gst") return v.businessType === "gst";
+                  if (tab.id === "non-gst") return v.businessType === "non-gst";
+                  if (tab.id === "pending") return v.status === "pending";
+                  if (tab.id === "approved") return v.status === "approved";
+                  if (tab.id === "rejected") return v.status === "rejected" || v.status === "action_required";
+                  return true;
+                }).length;
+
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                      activeTab === tab.id
+                        ? "bg-primary-500 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-650 hover:bg-gray-200"
+                    }`}
+                  >
+                    {tab.label}
+                    <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                      activeTab === tab.id
+                        ? "bg-white/25 text-white"
+                        : "bg-gray-200 text-gray-700"
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <AnimatedSelect
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              options={[
-                { value: "all", label: "All Status" },
-                { value: "approved", label: "Approved" },
-                { value: "pending", label: "Pending" },
-                { value: "suspended", label: "Suspended" },
-                { value: "rejected", label: "Rejected" },
-              ]}
-              className="w-full sm:w-auto min-w-[140px]"
-            />
+            {/* Search and Export */}
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
+              <div className="relative flex-1 w-full sm:min-w-[200px]">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search vendors by name, email, store name..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+                />
+              </div>
 
-            <div className="w-full sm:w-auto">
-              <ExportButton
-                data={filteredVendors}
-                headers={[
-                  { label: "ID", accessor: (row) => row.id },
-                  {
-                    label: "Store Name",
-                    accessor: (row) => row.storeName || row.name,
-                  },
-                  { label: "Email", accessor: (row) => row.email },
-                  { label: "Status", accessor: (row) => row.status },
-                  {
-                    label: "Commission Rate",
-                    accessor: (row) =>
-                      `${((row.commissionRate || 0) * 100).toFixed(1)}%`,
-                  },
-                  {
-                    label: "Join Date",
-                    accessor: (row) =>
-                      new Date(row.joinDate).toLocaleDateString(),
-                  },
-                ]}
-                filename="vendors"
-              />
+              <div className="w-full sm:w-auto">
+                <ExportButton
+                  data={filteredVendors}
+                  headers={[
+                    { label: "ID", accessor: (row) => row.id },
+                    {
+                      label: "Store Name",
+                      accessor: (row) => row.storeName || row.name,
+                    },
+                    { label: "Email", accessor: (row) => row.email },
+                    { label: "Business Type", accessor: (row) => row.businessType || "non-gst" },
+                    { label: "Status", accessor: (row) => row.status },
+                    {
+                      label: "Commission Rate",
+                      accessor: (row) =>
+                        `${((row.commissionRate || 0) * 100).toFixed(1)}%`,
+                    },
+                    {
+                      label: "Join Date",
+                      accessor: (row) =>
+                        new Date(row.joinDate).toLocaleDateString(),
+                    },
+                  ]}
+                  filename={`vendors_${activeTab}`}
+                />
+              </div>
             </div>
           </div>
         </div>

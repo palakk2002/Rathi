@@ -3,7 +3,7 @@ import Joi from 'joi';
 const objectId = Joi.string().trim().hex().length(24);
 
 export const vendorListQuerySchema = Joi.object({
-    status: Joi.string().valid('all', 'pending', 'approved', 'suspended', 'rejected').optional(),
+    status: Joi.string().valid('all', 'pending', 'approved', 'suspended', 'rejected', 'action_required').optional(),
     search: Joi.string().trim().allow('').optional(),
     page: Joi.number().integer().min(1).optional(),
     limit: Joi.number().integer().min(1).max(500).optional(),
@@ -14,7 +14,7 @@ export const vendorIdParamSchema = Joi.object({
 });
 
 export const vendorStatusUpdateSchema = Joi.object({
-    status: Joi.string().valid('approved', 'suspended', 'rejected').required(),
+    status: Joi.string().valid('approved', 'suspended', 'rejected', 'action_required').required(),
     reason: Joi.string().trim().allow('').max(500).optional(),
 });
 

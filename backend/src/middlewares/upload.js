@@ -88,6 +88,30 @@ export const uploadDocumentSingle = (fieldName) =>
         limits: { fileSize: MAX_DOCUMENT_FILE_SIZE },
     }).single(fieldName);
 
+// Multiple named document uploads for vendor registration
+export const uploadVendorRegistrationDocuments = () =>
+    multer({
+        storage: imageDiskStorage,
+        fileFilter: (req, file, cb) => {
+            if (ALLOWED_DOCUMENT_MIME_TYPES.includes(file.mimetype)) {
+                cb(null, true);
+            } else {
+                cb(
+                    new ApiError(
+                        400,
+                        'Invalid file type. Only PDF, JPEG, PNG, WEBP, and GIF are allowed.'
+                    ),
+                    false
+                );
+            }
+        },
+        limits: { fileSize: MAX_DOCUMENT_FILE_SIZE },
+    }).fields([
+        { name: 'fssaiLicenseDocument', maxCount: 1 },
+        { name: 'gstCertificate', maxCount: 1 },
+        { name: 'panCardDocument', maxCount: 1 },
+    ]);
+
 // Multiple named document uploads (used for delivery registration docs)
 export const uploadDeliveryDocuments = (fields) =>
     multer({
