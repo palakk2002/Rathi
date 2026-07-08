@@ -70,6 +70,7 @@ const DesktopHeader = () => {
                         <FiGrid /> Categories
                     </Link>
                     <Link to="/offers" className="text-gray-600 hover:text-primary-600 font-medium text-sm lg:text-base">Offers</Link>
+                    <Link to="/vendor/login" className="text-gray-600 hover:text-primary-600 font-medium text-sm lg:text-base">Sell on Rathi</Link>
                 </nav>
 
                 {/* Search Bar */}

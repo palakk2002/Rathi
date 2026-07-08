@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiShield, FiSlash, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiShield, FiSlash, FiAlertTriangle, FiCheckCircle, FiShoppingBag } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -148,6 +148,7 @@ const MobileProfile = () => {
     },
     { id: 'codStats', label: 'COD Account Standing', icon: FiShield, color: 'text-red-600', bg: 'bg-red-50' },
     { id: 'password', label: 'Change Password', icon: FiLock, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { id: 'sell', label: 'Sell on Rathi', icon: FiShoppingBag, color: 'text-amber-600', bg: 'bg-amber-50', link: '/vendor/login' },
   ];
 
   return (
