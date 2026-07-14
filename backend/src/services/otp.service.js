@@ -14,19 +14,18 @@ export const sendOTP = async (user, type = 'verification') => {
     user.otpExpiry = otpExpiry;
     await user.save({ validateBeforeSave: false });
 
-    try {
-        await sendEmail({
-            to: user.email,
-            subject: 'Your verification code',
-            text: `Your verification code is ${otp}. It expires in 10 minutes.`,
-            html: `<p>Your verification code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-        });
-    } catch (err) {
-        // Keep auth flow working in environments where SMTP is not configured.
+    // Send email asynchronously in the background so we don't block the request handler
+    sendEmail({
+        to: user.email,
+        subject: 'Your verification code',
+        text: `Your verification code is ${otp}. It expires in 10 minutes.`,
+        html: `<p>Your verification code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).catch((err) => {
         console.warn(`[OTP] Email send failed for ${user.email}: ${err.message}`);
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`[OTP] ${type} OTP generated for ${user.email}`);
-        }
+    });
+
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`[OTP] ${type} OTP generated for ${user.email}: ${otp}`);
     }
 
     return otp;

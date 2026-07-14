@@ -53,21 +53,19 @@ export const register = asyncHandler(async (req, res) => {
 
     const { uploadLocalFileToCloudinaryAndCleanup } = await import('../../../services/upload.service.js');
 
-    let fssaiLicenseDocument = undefined;
+    let fssaiFile = undefined;
     if (hasFoodCategory) {
         if (!fssaiLicenseNumber || !String(fssaiLicenseNumber).trim()) {
             throw new ApiError(400, 'FSSAI License Number is required for food category.');
         }
-        const fssaiFile = req.files?.fssaiLicenseDocument?.[0];
+        fssaiFile = req.files?.fssaiLicenseDocument?.[0];
         if (!fssaiFile) {
             throw new ApiError(400, 'FSSAI License Document file is required for food category.');
         }
-        const uploaded = await uploadLocalFileToCloudinaryAndCleanup(fssaiFile.path, 'vendors/documents');
-        fssaiLicenseDocument = uploaded.url;
     }
 
-    let gstCertificateUrl = undefined;
-    let panCardDocumentUrl = undefined;
+    let gstCertFile = undefined;
+    let panCardFile = undefined;
 
     if (businessType === 'gst') {
         if (!gstin || !String(gstin).trim()) {
@@ -79,30 +77,48 @@ export const register = asyncHandler(async (req, res) => {
         if (!panNumber || !String(panNumber).trim()) {
             throw new ApiError(400, 'PAN Number is required.');
         }
-        const gstCertFile = req.files?.gstCertificate?.[0];
-        const panCardFile = req.files?.panCardDocument?.[0];
+        gstCertFile = req.files?.gstCertificate?.[0];
+        panCardFile = req.files?.panCardDocument?.[0];
         if (!gstCertFile) {
             throw new ApiError(400, 'GST Certificate file is required for GST Registered sellers.');
         }
         if (!panCardFile) {
             throw new ApiError(400, 'PAN Card Document file is required.');
         }
-        const uploadedGst = await uploadLocalFileToCloudinaryAndCleanup(gstCertFile.path, 'vendors/documents');
-        gstCertificateUrl = uploadedGst.url;
-
-        const uploadedPan = await uploadLocalFileToCloudinaryAndCleanup(panCardFile.path, 'vendors/documents');
-        panCardDocumentUrl = uploadedPan.url;
     } else {
         if (!panNumber || !String(panNumber).trim()) {
             throw new ApiError(400, 'PAN Number is required.');
         }
-        const panCardFile = req.files?.panCardDocument?.[0];
+        panCardFile = req.files?.panCardDocument?.[0];
         if (!panCardFile) {
             throw new ApiError(400, 'PAN Card Document file is required.');
         }
-        const uploadedPan = await uploadLocalFileToCloudinaryAndCleanup(panCardFile.path, 'vendors/documents');
-        panCardDocumentUrl = uploadedPan.url;
     }
+
+    // Parallelize Cloudinary uploads
+    const uploadPromises = [];
+    let fssaiIndex = -1;
+    let gstIndex = -1;
+    let panIndex = -1;
+
+    if (fssaiFile) {
+        fssaiIndex = uploadPromises.length;
+        uploadPromises.push(uploadLocalFileToCloudinaryAndCleanup(fssaiFile.path, 'vendors/documents'));
+    }
+    if (gstCertFile) {
+        gstIndex = uploadPromises.length;
+        uploadPromises.push(uploadLocalFileToCloudinaryAndCleanup(gstCertFile.path, 'vendors/documents'));
+    }
+    if (panCardFile) {
+        panIndex = uploadPromises.length;
+        uploadPromises.push(uploadLocalFileToCloudinaryAndCleanup(panCardFile.path, 'vendors/documents'));
+    }
+
+    const uploadResults = await Promise.all(uploadPromises);
+
+    const fssaiLicenseDocument = fssaiIndex !== -1 ? uploadResults[fssaiIndex].url : undefined;
+    const gstCertificateUrl = gstIndex !== -1 ? uploadResults[gstIndex].url : undefined;
+    const panCardDocumentUrl = panIndex !== -1 ? uploadResults[panIndex].url : undefined;
 
     const vendor = await Vendor.create({
         name: String(name || '').trim(),
@@ -141,24 +157,27 @@ export const register = asyncHandler(async (req, res) => {
     });
     await sendOTP(vendor, 'vendor_verification');
 
-    // Notify all active admins about a new vendor registration request.
-    const admins = await Admin.find({ isActive: true }).select('_id');
-    await Promise.all(
-        admins.map((admin) =>
-            createNotification({
-                recipientId: admin._id,
-                recipientType: 'admin',
-                title: 'New Vendor Registration',
-                message: `${vendor.storeName || vendor.name} has registered and is awaiting review.`,
-                type: 'system',
-                data: {
-                    vendorId: String(vendor._id),
-                    vendorEmail: vendor.email,
-                    status: vendor.status,
-                },
-            })
-        )
-    );
+    // Notify all active admins asynchronously in the background.
+    Admin.find({ isActive: true }).select('_id')
+        .then((admins) => {
+            Promise.all(
+                admins.map((admin) =>
+                    createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'admin',
+                        title: 'New Vendor Registration',
+                        message: `${vendor.storeName || vendor.name} has registered and is awaiting review.`,
+                        type: 'system',
+                        data: {
+                            vendorId: String(vendor._id),
+                            vendorEmail: vendor.email,
+                            status: vendor.status,
+                        },
+                    })
+                )
+            ).catch(err => console.error('[Vendor Registration Admin Notification Error]:', err));
+        })
+        .catch(err => console.error('[Vendor Registration Find Admins Error]:', err));
 
     res.status(201).json(new ApiResponse(201, { email: vendor.email }, 'Registration submitted. Please verify your email and await admin approval.'));
 });
@@ -278,7 +297,21 @@ export const login = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findOne({ email }).select('+password');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
+    if (vendor.status !== 'approved') {
+        if (vendor.status === 'pending') {
+            throw new ApiError(403, 'Your account is pending admin approval. You will receive an email once approved.');
+        }
+        if (vendor.status === 'rejected') {
+            throw new ApiError(403, 'Your registration was rejected. Please contact support.');
+        }
+        if (vendor.status === 'action_required') {
+            throw new ApiError(403, 'Action is required on your account. Please check your email or contact support.');
+        }
+        if (vendor.status === 'suspended') {
+            throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
+        }
+        throw new ApiError(403, `Your account status is ${vendor.status}.`);
+    }
 
     const isMatch = await vendor.comparePassword(password);
     if (!isMatch) throw new ApiError(401, 'Invalid credentials.');
@@ -296,7 +329,21 @@ export const refresh = asyncHandler(async (req, res) => {
 
     if (!vendor) throw new ApiError(401, 'Invalid refresh token.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
+    if (vendor.status !== 'approved') {
+        if (vendor.status === 'pending') {
+            throw new ApiError(403, 'Your account is pending admin approval. You will receive an email once approved.');
+        }
+        if (vendor.status === 'rejected') {
+            throw new ApiError(403, 'Your registration was rejected. Please contact support.');
+        }
+        if (vendor.status === 'action_required') {
+            throw new ApiError(403, 'Action is required on your account. Please check your email or contact support.');
+        }
+        if (vendor.status === 'suspended') {
+            throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
+        }
+        throw new ApiError(403, `Your account status is ${vendor.status}.`);
+    }
 
     const tokens = await rotateRefreshSession(
         vendor,
