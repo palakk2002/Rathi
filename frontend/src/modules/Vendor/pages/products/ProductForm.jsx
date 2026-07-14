@@ -26,7 +26,7 @@ const ProductForm = () => {
     useVendorProductStore();
   const isEdit = id && id !== "new";
 
-  const vendorId = vendor?.id;
+  const vendorId = vendor?.id || vendor?._id;
 
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
