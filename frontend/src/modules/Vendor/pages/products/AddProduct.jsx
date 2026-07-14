@@ -24,7 +24,7 @@ const AddProduct = () => {
   const { initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
 
-  const vendorId = vendor?.id;
+  const vendorId = vendor?.id || vendor?._id;
 
   const [formData, setFormData] = useState({
     name: "",

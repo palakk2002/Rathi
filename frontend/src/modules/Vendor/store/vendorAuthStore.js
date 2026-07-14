@@ -188,3 +188,23 @@ export const useVendorAuthStore = create(
     }
   )
 );
+
+// Normalize vendor id to prevent issues when vendor profile is updated directly
+const originalSetState = useVendorAuthStore.setState;
+useVendorAuthStore.setState = (state, replace) => {
+  const nextState = typeof state === "function" ? state(useVendorAuthStore.getState()) : state;
+  if (nextState && nextState.vendor) {
+    nextState.vendor = {
+      ...nextState.vendor,
+      id: nextState.vendor.id || nextState.vendor._id,
+    };
+  }
+  return originalSetState(nextState, replace);
+};
+
+// Also normalize the initial state loaded from persistence
+const current = useVendorAuthStore.getState();
+if (current && current.vendor && !current.vendor.id && current.vendor._id) {
+  current.vendor.id = current.vendor._id;
+}
+
