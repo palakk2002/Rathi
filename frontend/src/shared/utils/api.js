@@ -182,6 +182,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Delete Content-Type if payload is FormData to allow browser to generate boundary parameter
+    if (config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
+    }
     return config;
   },
   (error) => Promise.reject(error)
