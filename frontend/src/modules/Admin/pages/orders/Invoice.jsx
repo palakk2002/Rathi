@@ -15,7 +15,7 @@ const Invoice = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { settings } = useSettingsStore();
   const storeLogo = settings?.general?.storeLogo || logoImage;
-  const storeName = settings?.general?.storeName || "Raathi E-commerce";
+  const storeName = settings?.general?.storeName || "Rathi E-commerce";
 
   useEffect(() => {
     const fetchOrder = async () => {

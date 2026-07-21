@@ -14,6 +14,7 @@ import * as marketingController from '../controllers/marketing.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as gstController from '../controllers/gst.controller.js';
+import * as shipmentController from '../controllers/shipment.controller.js';
 import codRoutes from './cod.routes.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
@@ -96,6 +97,16 @@ router.get('/orders/:id', ...adminAuth, orderController.getOrderById);
 router.patch('/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
 router.patch('/orders/:id/assign-delivery', ...adminAuth, orderController.assignDeliveryBoy);
 router.delete('/orders/:id', ...adminAuth, orderController.deleteOrder);
+
+// ─── Order Shipments (Third-Party Delivery) ───────────────────────────────────
+router.post('/orders/:id/shipment',          ...adminAuth, shipmentController.createOrderShipment);
+router.post('/orders/:id/shipment/cancel',   ...adminAuth, shipmentController.cancelOrderShipment);
+router.get('/orders/:id/shipment/tracking',  ...adminAuth, shipmentController.getOrderTracking);
+router.get('/orders/:id/shipment/quote',     ...adminAuth, shipmentController.getOrderQuote);
+router.get('/orders/:id/shipment',           ...adminAuth, shipmentController.getOrderShipment);
+
+// Delivery token management
+router.post('/delivery/token/refresh', ...adminAuth, shipmentController.refreshDeliveryToken);
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 router.get('/products', ...adminAuth, catalogController.getAllProducts);

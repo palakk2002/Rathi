@@ -221,7 +221,7 @@ const MobileProductCard = ({ product }) => {
             )}
 
             {/* Rating */}
-            {product.rating && (
+            {product.rating > 0 && (
               <div className="flex items-center gap-1 mb-2">
                 <div className="flex items-center">
                   {[...Array(5)].map((_, i) => (

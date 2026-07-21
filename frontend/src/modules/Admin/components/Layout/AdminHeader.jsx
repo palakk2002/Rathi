@@ -75,7 +75,7 @@ const AdminHeader = ({ onMenuClick }) => {
 
           {/* Logo */}
           <div className="flex items-center">
-            <img src={raathiLogo} alt="Raathi Logo" className="h-10 w-auto object-contain" />
+            <img src={raathiLogo} alt="Rathi Logo" className="h-10 w-auto object-contain" />
           </div>
 
           {/* Page Heading - Desktop Only */}

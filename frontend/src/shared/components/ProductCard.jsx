@@ -238,7 +238,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
 
           {/* Rating */}
           <div className="flex items-center justify-between mb-2">
-            {product.rating && !hideRating && (
+            {product.rating > 0 && !hideRating && (
               <div className="flex items-center gap-1">
                 <div className="flex items-center bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
                   <span className="text-[9px] md:text-xs font-bold text-yellow-700 mr-0.5">{product.rating}</span>

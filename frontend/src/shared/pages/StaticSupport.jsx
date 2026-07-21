@@ -48,8 +48,8 @@ const StaticSupport = () => {
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Email Support</h3>
             <p className="text-gray-500 text-sm mb-4">Drop us an email anytime and we will respond within 24 hours.</p>
-            <a href="mailto:raathiparivaar@gmail.com" className="text-primary-600 hover:text-primary-500 text-sm font-semibold transition-colors duration-200">
-              raathiparivaar@gmail.com
+            <a href="mailto:rathiparivaar@gmail.com" className="text-primary-600 hover:text-primary-500 text-sm font-semibold transition-colors duration-200">
+              rathiparivaar@gmail.com
             </a>
           </div>
 

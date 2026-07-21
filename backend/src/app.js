@@ -13,6 +13,7 @@ import adminRoutes from './modules/admin/routes/admin.routes.js';
 import vendorRoutes from './modules/vendor/routes/vendor.routes.js';
 import deliveryRoutes from './modules/delivery/routes/delivery.routes.js';
 import fcmTokenRoutes from './routes/fcmToken.routes.js';
+import deliveryWebhookRoutes from './routes/deliveryWebhookRoutes.js';
 import { initializeFirebase } from './services/firebaseAdmin.js';
 
 // Initialize Firebase Admin
@@ -50,6 +51,9 @@ const isValidDeliveryDocToken = (relativePath, rawToken) => {
 app.use(helmet());
 app.use(mongoSanitize());
 app.use(cors({ origin: true, credentials: true }));
+
+// ─── Webhook Routes (MUST be before express.json — raw body needed for HMAC) ─
+app.use('/api/webhooks', deliveryWebhookRoutes);
 
 // ─── Body Parsing ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));

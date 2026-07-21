@@ -9,7 +9,7 @@ import DeliveryBottomNav from "./DeliveryBottomNav";
 import raathiLogo from "../../../../assets/raathifinalogo.png";
 const appLogo = {
   src: raathiLogo,
-  alt: "Raathi"
+  alt: "Rathi"
 };
 import { useEffect } from "react";
 
@@ -79,14 +79,14 @@ const DeliveryLayout = () => {
                         const fallback = document.createElement("span");
                         fallback.className =
                           "logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg";
-                        fallback.textContent = "Raathi";
+                        fallback.textContent = "Rathi";
                         parent.appendChild(fallback);
                       }
                     }}
                   />
                 ) : (
                   <span className="logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg">
-                    Raathi
+                    Rathi
                   </span>
                 )}
             </div>

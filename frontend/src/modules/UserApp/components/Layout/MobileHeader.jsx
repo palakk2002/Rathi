@@ -12,7 +12,7 @@ import { useAuthStore } from "../../../../shared/store/authStore";
 import raathiLogo from "../../../../assets/raathifinalogo.png";
 const appLogo = {
   src: raathiLogo,
-  alt: "Raathi"
+  alt: "Rathi"
 };
 import { motion } from "framer-motion";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
@@ -299,7 +299,7 @@ const MobileHeader = () => {
         {/* Second Row: Tab Navigation */}
         <div className="flex items-center gap-3">
           <Link to="/home" className="flex-1 py-2 px-3 rounded-full bg-[#E5DDFB] border border-purple-300 text-center font-black text-[#5B21B6] text-xs shadow-sm flex items-center justify-center">
-            raathi
+            Rathi
           </Link>
           <Link to="/categories" className="flex-1 py-2 px-3 rounded-full bg-white border border-gray-200 text-center font-bold text-gray-800 text-xs shadow-sm flex items-center justify-center">
             Categories

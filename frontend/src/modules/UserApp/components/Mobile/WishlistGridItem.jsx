@@ -71,7 +71,7 @@ const WishlistGridItem = ({ item, index, onMoveToCart, onRemove }) => {
         )}
 
         {/* Rating */}
-        {item.rating && (
+        {item.rating > 0 && (
           <div className="flex items-center gap-0.5 mb-0.5">
             <div className="flex items-center">
               {[...Array(5)].map((_, i) => (

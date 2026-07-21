@@ -5,7 +5,7 @@ import { useAuthStore } from "../../../../shared/store/authStore";
 import raathiLogo from "../../../../assets/raathifinalogo.png";
 const appLogo = {
   src: raathiLogo,
-  alt: "Raathi"
+  alt: "Rathi"
 };
 import SearchBar from "../../../../shared/components/SearchBar";
 import { FiHeart, FiShoppingBag, FiUser, FiLogOut, FiGrid, FiBell } from "react-icons/fi";
@@ -59,7 +59,7 @@ const DesktopHeader = () => {
                             className="h-14 w-auto object-contain"
                         />
                     ) : (
-                        <span className="text-2xl font-bold text-primary-600">Raathi</span>
+                        <span className="text-2xl font-bold text-primary-600">Rathi</span>
                     )}
                 </Link>
 

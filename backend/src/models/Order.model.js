@@ -80,6 +80,24 @@ const orderSchema = new mongoose.Schema(
         deliveryOtpDebug: { type: String, select: false },
         deliveryOtpVerifiedAt: Date,
         deliveryOtpAttempts: { type: Number, default: 0, select: false },
+
+        // ─── Third-party provider tracking (additive — all optional) ─────────
+        providerName: {
+            type:    String,
+            default: 'internal',
+        },
+        externalShipmentId: {
+            type:   String,
+            index:  true,
+            sparse: true,   // AWB / tracking number from provider
+        },
+        trackingUrl:     { type: String },
+        providerStatus:  { type: String },   // raw provider status (before mapping)
+        providerQuote:   { type: mongoose.Schema.Types.Mixed },   // price snapshot at booking
+        shipmentCreatedAt:   { type: Date },
+        shipmentCancelledAt: { type: Date },
+        // ─────────────────────────────────────────────────────────────────────
+
         estimatedDelivery: Date,
         deliveredAt: Date,
         isCashSettled: { type: Boolean, default: false },

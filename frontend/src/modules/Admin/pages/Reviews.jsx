@@ -95,7 +95,7 @@ const Reviews = () => {
       key: 'productName',
       label: 'Product',
       sortable: true,
-      render: (value) => <span className="font-semibold text-gray-700">{value || 'Raathi Product'}</span>
+      render: (value) => <span className="font-semibold text-gray-700">{value || 'Rathi Product'}</span>
     },
     {
       key: 'user',
@@ -339,7 +339,7 @@ const Reviews = () => {
 
                 <div>
                   <p className="text-xs text-gray-400 font-semibold uppercase">Product</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{viewingReview.productName || 'Raathi Product'}</p>
+                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{viewingReview.productName || 'Rathi Product'}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
