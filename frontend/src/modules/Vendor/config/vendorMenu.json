@@ -118,6 +118,16 @@
                      ]
     },
     {
+        "title": "Payment & Settlements",
+        "route": "/vendor/payment-settlements",
+        "children": [
+            "Bank Details",
+            "Settlement History",
+            "Pending Settlements",
+            "Released Settlements"
+        ]
+    },
+    {
         "title":  "Profile",
         "route":  "/vendor/profile",
         "children":  [

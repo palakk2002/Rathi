@@ -82,6 +82,18 @@ const vendorSchema = new mongoose.Schema(
             accountNumber: { type: String, select: false },
             bankName: { type: String, select: false },
             ifscCode: { type: String, select: false },
+            branchName: { type: String, default: '' },
+            upiId: { type: String, default: '' },
+            cancelledCheque: { type: String, default: '' },
+            panNumber: { type: String, default: '' },
+            gstNumber: { type: String, default: '' },
+            status: {
+                type: String,
+                enum: ['not_submitted', 'pending', 'approved', 'rejected', 'action_required'],
+                default: 'not_submitted',
+            },
+            remarks: { type: String, default: '' },
+            submittedAt: { type: Date },
         },
         documents: {
             gst: String,

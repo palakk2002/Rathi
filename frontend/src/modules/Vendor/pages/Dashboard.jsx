@@ -163,6 +163,25 @@ const VendorDashboard = () => {
         </div>
       </div>
 
+      {/* Bank Details Warning Banner */}
+      {vendor && vendor.bankDetails?.status !== 'approved' && (
+        <div className="p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-orange-50 border-orange-200 text-orange-900 shadow-sm">
+          <div className="space-y-1">
+            <h3 className="font-bold text-base flex items-center gap-2 text-orange-800">
+              ⚠️ Payout Setup Required
+            </h3>
+            <p className="text-sm text-orange-700">
+              Complete your Bank Details to receive payouts. Currently, settlements are placed ON HOLD until details are verified.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/vendor/payment-settlements/bank-details')}
+            className="px-4 py-2 text-sm font-semibold rounded-xl whitespace-nowrap bg-orange-600 text-white hover:bg-orange-700 shadow-sm transition-colors">
+            Complete Now
+          </button>
+        </div>
+      )}
+
       {/* Verification Status Banner */}
       {vendor && vendor.status !== 'approved' && (
         <div className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
@@ -232,47 +251,96 @@ const VendorDashboard = () => {
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button
-            onClick={() => navigate("/vendor/products/add-product")}
-            className="flex items-center gap-3 p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors text-left">
-            <div className="bg-primary-500 p-2 rounded-lg">
-              <FiPackage className="text-white text-xl" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Add New Product</h3>
-              <p className="text-sm text-gray-600">
-                Create a new product listing
-              </p>
-            </div>
-          </button>
+      {/* Quick Actions & Profile Completion Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Quick Actions */}
+        <div className="lg:col-span-2 bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => navigate("/vendor/products/add-product")}
+              className="flex items-center gap-3 p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors text-left w-full">
+              <div className="bg-primary-500 p-2 rounded-lg flex-shrink-0">
+                <FiPackage className="text-white text-xl" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 text-sm sm:text-base">Add New Product</h3>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Create a new product listing
+                </p>
+              </div>
+            </button>
 
-          <button
-            onClick={() => navigate("/vendor/orders")}
-            className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-left">
-            <div className="bg-green-500 p-2 rounded-lg">
-              <FiShoppingBag className="text-white text-xl" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">View Orders</h3>
-              <p className="text-sm text-gray-600">Manage your orders</p>
-            </div>
-          </button>
+            <button
+              onClick={() => navigate("/vendor/orders")}
+              className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-left w-full">
+              <div className="bg-green-500 p-2 rounded-lg flex-shrink-0">
+                <FiShoppingBag className="text-white text-xl" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 text-sm sm:text-base">View Orders</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Manage your orders</p>
+              </div>
+            </button>
 
-          <button
-            onClick={() => navigate("/vendor/earnings")}
-            className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left">
-            <div className="bg-purple-500 p-2 rounded-lg">
-              <FiDollarSign className="text-white text-xl" />
+            <button
+              onClick={() => navigate("/vendor/earnings")}
+              className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left w-full">
+              <div className="bg-purple-500 p-2 rounded-lg flex-shrink-0">
+                <FiDollarSign className="text-white text-xl" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 text-sm sm:text-base">View Earnings</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Check your earnings</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Profile Completion */}
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Profile Completion</h2>
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-16 h-16 rounded-full border-4 border-purple-500 flex items-center justify-center font-bold text-purple-700 text-lg flex-shrink-0">
+                {vendor?.bankDetails?.status === 'approved' ? 100 : 80}%
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600">
+                {vendor?.bankDetails?.status === 'approved'
+                  ? "Your profile is 100% complete. Payouts are fully active!"
+                  : "Complete bank verification to activate payouts."}
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">View Earnings</h3>
-              <p className="text-sm text-gray-600">Check your earnings</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Personal Details</span>
+                <span className="text-green-600 font-bold">✔</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Shop Details</span>
+                <span className="text-green-600 font-bold">✔</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Business Details</span>
+                <span className="text-green-600 font-bold">✔</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Bank Details</span>
+                {vendor?.bankDetails?.status === 'approved' ? (
+                  <span className="text-green-600 font-bold">✔</span>
+                ) : (
+                  <span className="text-red-500 font-bold">❌</span>
+                )}
+              </div>
             </div>
-          </button>
+          </div>
+          {vendor?.bankDetails?.status !== 'approved' && (
+            <button
+              onClick={() => navigate('/vendor/payment-settlements/bank-details')}
+              className="w-full mt-5 py-2 text-sm font-semibold rounded-xl bg-purple-650 bg-purple-600 text-white hover:bg-purple-700 transition-colors">
+              Add Bank Details
+            </button>
+          )}
         </div>
       </div>
 

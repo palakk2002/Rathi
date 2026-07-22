@@ -49,6 +49,7 @@ import ManageCategories from "./modules/Admin/pages/categories/ManageCategories"
 import CategoryOrder from "./modules/Admin/pages/categories/CategoryOrder";
 // Brands child pages
 import ManageBrands from "./modules/Admin/pages/brands/ManageBrands";
+import BrandApprovals from "./modules/Admin/pages/brands/BrandApprovals";
 // Customers child pages
 import ViewCustomers from "./modules/Admin/pages/customers/ViewCustomers";
 import CustomerAddresses from "./modules/Admin/pages/customers/Addresses";
@@ -62,6 +63,7 @@ import AssignDelivery from "./modules/Admin/pages/delivery/AssignDelivery";
 import Vendors from "./modules/Admin/pages/Vendors";
 import ManageVendors from "./modules/Admin/pages/vendors/ManageVendors";
 import PendingApprovals from "./modules/Admin/pages/vendors/PendingApprovals";
+import PayoutManagement from "./modules/Admin/pages/vendors/PayoutManagement";
 import VendorDetail from "./modules/Admin/pages/vendors/VendorDetail";
 import CommissionRates from "./modules/Admin/pages/vendors/CommissionRates";
 import AdminVendorAnalytics from "./modules/Admin/pages/vendors/VendorAnalytics";
@@ -164,6 +166,7 @@ import VendorOrderTracking from "./modules/Vendor/pages/orders/OrderTracking";
 import VendorOrderDetail from "./modules/Vendor/pages/orders/OrderDetail";
 import VendorAnalytics from "./modules/Vendor/pages/Analytics";
 import VendorEarnings from "./modules/Vendor/pages/Earnings";
+import VendorPaymentSettlements from "./modules/Vendor/pages/PaymentSettlements";
 import VendorSettings from "./modules/Vendor/pages/Settings";
 import VendorStockManagement from "./modules/Vendor/pages/StockManagement";
 import VendorWalletHistory from "./modules/Vendor/pages/WalletHistory";
@@ -455,6 +458,7 @@ const AppRoutes = () => {
         <Route path="categories/category-order" element={<CategoryOrder />} />
         <Route path="brands" element={<Brands />} />
         <Route path="brands/manage-brands" element={<ManageBrands />} />
+        <Route path="brands/approvals" element={<BrandApprovals />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="orders/:id/invoice" element={<Invoice />} />
@@ -478,6 +482,10 @@ const AppRoutes = () => {
         <Route
           path="vendors/pending-approvals"
           element={<PendingApprovals />}
+        />
+        <Route
+          path="vendors/payout-management"
+          element={<PayoutManagement />}
         />
         <Route path="vendors/commission-rates" element={<CommissionRates />} />
         <Route
@@ -595,6 +603,11 @@ const AppRoutes = () => {
         <Route path="orders/:id" element={<VendorOrderDetail />} />
         <Route path="analytics" element={<VendorAnalytics />} />
         <Route path="reports" element={<VendorReports />} />
+        <Route path="payment-settlements" element={<VendorPaymentSettlements />} />
+        <Route path="payment-settlements/bank-details" element={<VendorPaymentSettlements />} />
+        <Route path="payment-settlements/settlement-history" element={<VendorPaymentSettlements />} />
+        <Route path="payment-settlements/pending-settlements" element={<VendorPaymentSettlements />} />
+        <Route path="payment-settlements/released-settlements" element={<VendorPaymentSettlements />} />
         <Route path="earnings" element={<VendorEarnings />} />
         <Route path="earnings/overview" element={<VendorEarnings />} />
         <Route

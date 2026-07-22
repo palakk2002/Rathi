@@ -24,6 +24,64 @@ const AddProduct = () => {
   const { initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
 
+  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [isSubmittingBrand, setIsSubmittingBrand] = useState(false);
+  const [newBrandData, setNewBrandData] = useState({
+    name: "",
+    logo: "",
+    website: "",
+    country: "",
+    manufacturer: "",
+    description: ""
+  });
+
+  const handleBrandLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select an image file");
+        return;
+      }
+      try {
+        const res = await uploadVendorImage(file, "brands");
+        const uploaded = res?.data ?? res;
+        setNewBrandData((prev) => ({
+          ...prev,
+          logo: uploaded?.url || "",
+        }));
+        toast.success("Brand logo uploaded");
+      } catch (err) {
+        toast.error("Logo upload failed");
+      }
+    }
+  };
+
+  const handleBrandSubmit = async () => {
+    if (!newBrandData.name.trim()) return;
+    setIsSubmittingBrand(true);
+    try {
+      const { createBrand } = useBrandStore.getState();
+      const newBrand = await createBrand(newBrandData);
+      setFormData((prev) => ({
+        ...prev,
+        brandId: String(newBrand.id),
+      }));
+      setShowBrandModal(false);
+      setNewBrandData({
+        name: "",
+        logo: "",
+        website: "",
+        country: "",
+        manufacturer: "",
+        description: ""
+      });
+    } catch (err) {
+      // Error handled by store
+    } finally {
+      setIsSubmittingBrand(false);
+    }
+  };
+
   const vendorId = vendor?.id || vendor?._id;
 
   const [formData, setFormData] = useState({
@@ -511,6 +569,8 @@ const AddProduct = () => {
                 value={formData.brandId || ""}
                 onChange={handleChange}
                 placeholder="Select Brand"
+                searchable={true}
+                onCreateNew={() => setShowBrandModal(true)}
                 options={[
                   { value: "", label: "Select Brand" },
                   ...brands
@@ -1177,6 +1237,104 @@ const AddProduct = () => {
           </div>
         </div>
       </form>
+
+      {/* Brand Creation Modal */}
+      {showBrandModal && (
+        <div className="fixed inset-0 z-[999] overflow-y-auto flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <h3 className="text-base font-bold text-gray-900">Create New Brand</h3>
+              <button
+                type="button"
+                onClick={() => setShowBrandModal(false)}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-lg transition-colors">
+                <FiX className="text-xl" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4">
+              {/* Brand Name (Required) */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Brand Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newBrandData.name}
+                  onChange={(e) => setNewBrandData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Nike, Apple"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                  required
+                />
+              </div>
+
+              {/* Brand Logo (Optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Brand Logo
+                </label>
+                <div className="flex items-center gap-4">
+                  {newBrandData.logo ? (
+                    <img
+                      src={newBrandData.logo}
+                      alt="Logo Preview"
+                      className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs">
+                      No Logo
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer text-xs font-medium text-gray-700 transition-colors">
+                    <FiUpload />
+                    <span>Upload Logo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBrandLogoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={newBrandData.description}
+                  onChange={(e) => setNewBrandData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Short description of the brand..."
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowBrandModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBrandSubmit}
+                disabled={isSubmittingBrand || !newBrandData.name.trim()}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-semibold hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center gap-2">
+                {isSubmittingBrand ? 'Creating...' : 'Create Brand'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

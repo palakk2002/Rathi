@@ -52,6 +52,7 @@ const iconMap = {
   Earnings: FiDollarSign,
   Settings: FiSettings,
   Profile: FiUser,
+  "Payment & Settlements": FiCreditCard,
 };
 
 // Helper function to convert child name to route path
@@ -74,6 +75,12 @@ const getChildRoute = (parentRoute, childName) => {
       "Store Settings": "/vendor/settings/store",
       "Payment Settings": "/vendor/settings/payment",
       "Shipping Settings": "/vendor/settings/shipping",
+    },
+    "/vendor/payment-settlements": {
+      "Bank Details": "/vendor/payment-settlements/bank-details",
+      "Settlement History": "/vendor/payment-settlements/settlement-history",
+      "Pending Settlements": "/vendor/payment-settlements/pending-settlements",
+      "Released Settlements": "/vendor/payment-settlements/released-settlements",
     },
   };
 

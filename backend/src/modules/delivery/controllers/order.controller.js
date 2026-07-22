@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { updateStatsForUser } from '../../../services/codStats.service.js';
+import { processSettlementForOrder } from '../../../services/payout.service.js';
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -320,6 +321,14 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
         }
     }
     await order.save();
+
+    if (status === 'delivered') {
+        try {
+            await processSettlementForOrder(order);
+        } catch (err) {
+            console.error('Error processing settlement in delivery order update:', err);
+        }
+    }
 
     if (order.userId && ['delivered', 'cancelled'].includes(status)) {
         updateStatsForUser(order.userId).catch(err => console.error('Error updating COD stats:', err));

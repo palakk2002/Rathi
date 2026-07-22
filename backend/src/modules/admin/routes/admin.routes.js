@@ -13,6 +13,7 @@ import * as reportController from '../controllers/report.controller.js';
 import * as marketingController from '../controllers/marketing.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
+import * as payoutController from '../controllers/payout.controller.js';
 import * as gstController from '../controllers/gst.controller.js';
 import * as shipmentController from '../controllers/shipment.controller.js';
 import codRoutes from './cod.routes.js';
@@ -33,6 +34,7 @@ import {
     brandIdParamSchema,
     createBrandSchema,
     updateBrandSchema,
+    mergeBrandsSchema,
     removeProductSchema,
 } from '../validators/catalog.validator.js';
 import {
@@ -130,8 +132,12 @@ router.delete('/categories/:id', ...adminAuth, validate(categoryIdParamSchema, '
 
 // ─── Brands ───────────────────────────────────────────────────────────────────
 router.get('/brands', ...adminAuth, catalogController.getAllBrands);
+router.get('/brands/approvals', ...adminAuth, catalogController.getBrandApprovals);
 router.post('/brands', ...adminAuth, validate(createBrandSchema), catalogController.createBrand);
 router.put('/brands/:id', ...adminAuth, validate(brandIdParamSchema, 'params'), validate(updateBrandSchema), catalogController.updateBrand);
+router.patch('/brands/:id/status', ...adminAuth, validate(brandIdParamSchema, 'params'), catalogController.updateBrandStatus);
+router.patch('/brands/:id/rename', ...adminAuth, validate(brandIdParamSchema, 'params'), catalogController.renameBrand);
+router.post('/brands/merge', ...adminAuth, validate(mergeBrandsSchema), catalogController.mergeBrands);
 router.delete('/brands/:id', ...adminAuth, validate(brandIdParamSchema, 'params'), catalogController.deleteBrand);
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
@@ -141,6 +147,12 @@ router.get('/vendors/:id', ...adminAuth, validate(vendorIdParamSchema, 'params')
 router.get('/vendors/:id/commissions', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorCommissionsQuerySchema, 'query'), vendorController.getVendorCommissions);
 router.patch('/vendors/:id/status', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorStatusUpdateSchema), vendorController.updateVendorStatus);
 router.patch('/vendors/:id/commission', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorCommissionUpdateSchema), vendorController.updateCommissionRate);
+
+// ─── Payouts & Settlements ───────────────────────────────────────────────────
+router.get('/payouts/vendors', ...adminAuth, payoutController.getVendorsPayoutList);
+router.patch('/payouts/vendors/:id/bank-status', ...adminAuth, payoutController.updateVendorBankStatus);
+router.get('/payouts/settlements', ...adminAuth, payoutController.getSettlementsList);
+router.patch('/payouts/settlements/:id/status', ...adminAuth, payoutController.updateSettlementStatus);
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 router.get('/customers', ...adminAuth, validate(customerListQuerySchema, 'query'), customerController.getAllCustomers);

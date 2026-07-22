@@ -649,8 +649,20 @@ export const getAllBrands = asyncHandler(async (req, res) => {
 export const createBrand = asyncHandler(async (req, res) => {
     const payload = sanitizeBrandPayload(req.body);
     const { name, ...rest } = payload;
-    const slug = slugify(name);
-    const brand = await Brand.create({ name, slug, ...rest });
+    if (!name || !name.trim()) {
+        throw new ApiError(400, 'Brand name is required.');
+    }
+    const trimmedName = name.replace(/\s+/g, ' ').trim();
+    const cleanRegexName = trimmedName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const existingBrand = await Brand.findOne({
+        name: { $regex: new RegExp(`^\\s*${cleanRegexName}\\s*$`, 'i') }
+    });
+    if (existingBrand) {
+        throw new ApiError(400, 'This Brand already exists.');
+    }
+
+    const slug = slugify(trimmedName);
+    const brand = await Brand.create({ name: trimmedName, slug, ...rest });
     res.status(201).json(new ApiResponse(201, brand, 'Brand created.'));
 });
 
@@ -658,7 +670,17 @@ export const createBrand = asyncHandler(async (req, res) => {
 export const updateBrand = asyncHandler(async (req, res) => {
     const payload = sanitizeBrandPayload(req.body);
     if (payload.name) {
-        payload.slug = slugify(payload.name);
+        const trimmedName = payload.name.replace(/\s+/g, ' ').trim();
+        const cleanRegexName = trimmedName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const existingBrand = await Brand.findOne({
+            _id: { $ne: req.params.id },
+            name: { $regex: new RegExp(`^\\s*${cleanRegexName}\\s*$`, 'i') }
+        });
+        if (existingBrand) {
+            throw new ApiError(400, 'This Brand already exists.');
+        }
+        payload.name = trimmedName;
+        payload.slug = slugify(trimmedName);
     }
 
     const brand = await Brand.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
@@ -678,4 +700,124 @@ export const deleteBrand = asyncHandler(async (req, res) => {
 
     await Brand.findByIdAndDelete(req.params.id);
     res.status(200).json(new ApiResponse(200, null, 'Brand deleted.'));
+});
+
+// GET /api/admin/brands/approvals
+export const getBrandApprovals = asyncHandler(async (req, res) => {
+    const brands = await Brand.aggregate([
+        {
+            $match: {
+                createdByVendor: { $ne: null }
+            }
+        },
+        {
+            $lookup: {
+                from: 'vendors',
+                localField: 'createdByVendor',
+                foreignField: '_id',
+                as: 'vendor'
+            }
+        },
+        {
+            $unwind: {
+                path: '$vendor',
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $lookup: {
+                from: 'products',
+                localField: '_id',
+                foreignField: 'brandId',
+                as: 'products'
+            }
+        },
+        {
+            $project: {
+                _id: 1,
+                name: 1,
+                slug: 1,
+                logo: 1,
+                description: 1,
+                website: 1,
+                isActive: 1,
+                status: 1,
+                country: 1,
+                manufacturer: 1,
+                createdAt: 1,
+                createdByVendor: 1,
+                vendorName: '$vendor.storeName',
+                vendorEmail: '$vendor.email',
+                totalProducts: { $size: '$products' }
+            }
+        },
+        {
+            $sort: { createdAt: -1 }
+        }
+    ]);
+
+    res.status(200).json(new ApiResponse(200, brands, 'Brand approvals fetched.'));
+});
+
+// PATCH /api/admin/brands/:id/status
+export const updateBrandStatus = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['Approved', 'Rejected', 'Pending'].includes(status)) {
+        throw new ApiError(400, 'Invalid status.');
+    }
+    const brand = await Brand.findByIdAndUpdate(id, { status }, { new: true });
+    if (!brand) throw new ApiError(404, 'Brand not found.');
+    res.status(200).json(new ApiResponse(200, brand, `Brand status updated to ${status}.`));
+});
+
+// PATCH /api/admin/brands/:id/rename
+export const renameBrand = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+        throw new ApiError(400, 'Brand name is required.');
+    }
+
+    const trimmedName = name.replace(/\s+/g, ' ').trim();
+    const cleanRegexName = trimmedName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const existingBrand = await Brand.findOne({
+        _id: { $ne: id },
+        name: { $regex: new RegExp(`^\\s*${cleanRegexName}\\s*$`, 'i') }
+    });
+    if (existingBrand) {
+        throw new ApiError(400, 'This Brand already exists.');
+    }
+
+    let slug = slugify(trimmedName);
+    const existingSlug = await Brand.findOne({ _id: { $ne: id }, slug });
+    if (existingSlug) {
+        slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
+
+    const brand = await Brand.findByIdAndUpdate(id, { name: trimmedName, slug }, { new: true });
+    if (!brand) throw new ApiError(404, 'Brand not found.');
+
+    res.status(200).json(new ApiResponse(200, brand, 'Brand renamed successfully.'));
+});
+
+// POST /api/admin/brands/merge
+export const mergeBrands = asyncHandler(async (req, res) => {
+    const { sourceBrandId, targetBrandId } = req.body;
+    if (String(sourceBrandId) === String(targetBrandId)) {
+        throw new ApiError(400, 'Source and target brands cannot be the same.');
+    }
+
+    const sourceBrand = await Brand.findById(sourceBrandId);
+    const targetBrand = await Brand.findById(targetBrandId);
+    if (!sourceBrand) throw new ApiError(404, 'Source brand not found.');
+    if (!targetBrand) throw new ApiError(404, 'Target brand not found.');
+
+    // Perform product updates
+    await Product.updateMany({ brandId: sourceBrandId }, { brandId: targetBrandId });
+
+    // Delete the source brand (as it is now duplicate and empty)
+    await Brand.findByIdAndDelete(sourceBrandId);
+
+    res.status(200).json(new ApiResponse(200, { targetBrandId }, 'Brands merged successfully.'));
 });

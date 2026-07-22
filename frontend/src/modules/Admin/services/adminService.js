@@ -153,6 +153,18 @@ export const updateBrand = (id, data) =>
 export const deleteBrand = (id) =>
     api.delete(`/admin/brands/${id}`);
 
+export const getBrandApprovals = () =>
+    api.get('/admin/brands/approvals');
+
+export const updateBrandStatus = (id, status) =>
+    api.patch(`/admin/brands/${id}/status`, { status });
+
+export const renameBrand = (id, name) =>
+    api.patch(`/admin/brands/${id}/rename`, { name });
+
+export const mergeBrands = (sourceBrandId, targetBrandId) =>
+    api.post('/admin/brands/merge', { sourceBrandId, targetBrandId });
+
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 export const getAllVendors = (params = {}) =>
     api.get('/admin/vendors', { params });
@@ -340,4 +352,10 @@ export const getCodUsers = (params = {}) => api.get('/admin/cod/users', { params
 export const getUserCodTimeline = (userId) => api.get(`/admin/cod/users/${userId}/timeline`);
 export const issueUserWarning = (userId, reason) => api.post(`/admin/cod/users/${userId}/warn`, { reason });
 export const toggleUserBlacklist = (userId, isBlacklisted, reason) => api.post(`/admin/cod/users/${userId}/blacklist`, { isBlacklisted, reason });
+
+// ─── Payouts & Settlements ───────────────────────────────────────────────────
+export const getVendorsPayoutList = () => api.get('/admin/payouts/vendors');
+export const updateVendorBankStatus = (id, status, remarks) => api.patch(`/admin/payouts/vendors/${id}/bank-status`, { status, remarks });
+export const getSettlementsList = (params = {}) => api.get('/admin/payouts/settlements', { params });
+export const updateSettlementStatus = (id, action, transactionId, notes) => api.patch(`/admin/payouts/settlements/${id}/status`, { action, transactionId, notes });
 

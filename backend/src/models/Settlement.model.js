@@ -8,7 +8,14 @@ const settlementSchema = new mongoose.Schema(
         paymentMethod: { type: String, enum: ['bank_transfer', 'wallet', 'upi'], default: 'bank_transfer' },
         transactionId: String,
         notes: String,
-        status: { type: String, enum: ['completed', 'failed'], default: 'completed' },
+        status: { type: String, enum: ['completed', 'failed', 'pending', 'released', 'on_hold', 'cancelled'], default: 'pending' },
+        reason: { type: String, default: '' },
+        platformFee: { type: Number, default: 0 },
+        shippingDeduction: { type: Number, default: 0 },
+        commission: { type: Number, default: 0 },
+        netPayable: { type: Number, required: true },
+        ordersIncludedCount: { type: Number, default: 1 },
+        orderIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     },
     { timestamps: true }
 );

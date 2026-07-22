@@ -14,6 +14,8 @@ import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as gstController from '../../admin/controllers/gst.controller.js';
+import * as brandController from '../controllers/brand.controller.js';
+import * as payoutController from '../controllers/payout.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -70,7 +72,12 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
 router.put('/auth/profile', ...vendorAuth, authController.updateProfile);
-router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
+router.put('/auth/bank-details', ...vendorAuth, payoutController.updateVendorBankDetails);
+router.get('/auth/bank-details', ...vendorAuth, payoutController.getVendorBankDetails);
+router.get('/payouts/summary', ...vendorAuth, payoutController.getPayoutSummary);
+router.get('/payouts/settlements', ...vendorAuth, payoutController.getVendorSettlements);
+router.get('/payouts/bank-details', ...vendorAuth, payoutController.getVendorBankDetails);
+router.put('/payouts/bank-details', ...vendorAuth, payoutController.updateVendorBankDetails);
 
 // Products
 router.get('/products', ...vendorAuth, productController.getVendorProducts);
@@ -80,7 +87,8 @@ router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'param
 router.post('/products/:id/resubmit', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.resubmitProduct);
 router.delete('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.deleteProduct);
 router.patch('/stock/:productId', ...vendorAuth, productController.updateStock);
-router.get('/products/:id/gst', ...vendorAuth, validate(productIdParamSchema, 'params'), gstController.getEffectiveProductGst);
+// Brands
+router.post('/brands', ...vendorAuth, brandController.createVendorBrand);
 
 // Orders
 router.get('/orders', ...vendorAuth, orderController.getVendorOrders);

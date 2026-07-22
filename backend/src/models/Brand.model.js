@@ -8,6 +8,10 @@ const brandSchema = new mongoose.Schema(
         description: { type: String },
         website: { type: String, trim: true },
         isActive: { type: Boolean, default: true },
+        status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Approved' },
+        createdByVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
+        country: { type: String },
+        manufacturer: { type: String },
     },
     { timestamps: true }
 );

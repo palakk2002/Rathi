@@ -97,6 +97,12 @@ export const getVendorProductById = (id) =>
 export const createVendorProduct = (data) => api.post('/vendor/products', data);
 
 /**
+ * Create a new brand by vendor
+ * @param {object} data
+ */
+export const createVendorBrand = (data) => api.post('/vendor/brands', data);
+
+/**
  * Update an existing product
  * @param {string} id  — MongoDB _id
  * @param {object} data
@@ -532,3 +538,23 @@ export const uploadVendorImages = (files, folder = 'vendors/products') => {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 };
+
+/**
+ * Get vendor payout summary
+ */
+export const getVendorPayoutSummary = () => api.get('/vendor/payouts/summary');
+
+/**
+ * Get vendor settlements filterable by status
+ */
+export const getVendorSettlements = (params = {}) => api.get('/vendor/payouts/settlements', { params });
+
+/**
+ * Get vendor bank details
+ */
+export const getVendorBankDetails = () => api.get('/vendor/payouts/bank-details');
+
+/**
+ * Update vendor bank details
+ */
+export const updateVendorBankDetailsNew = (data) => api.put('/vendor/payouts/bank-details', data);

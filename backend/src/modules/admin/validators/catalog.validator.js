@@ -133,19 +133,30 @@ export const brandIdParamSchema = Joi.object({
 
 export const createBrandSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
-    logo: Joi.string().trim().uri().allow('').optional(),
+    logo: Joi.string().trim().allow('').optional(),
     description: Joi.string().trim().allow('').optional(),
-    website: Joi.string().trim().uri().allow('').optional(),
+    website: Joi.string().trim().allow('').optional(),
     isActive: Joi.boolean().optional(),
+    status: Joi.string().valid('Pending', 'Approved', 'Rejected').optional(),
+    country: Joi.string().trim().allow('').optional(),
+    manufacturer: Joi.string().trim().allow('').optional(),
 });
 
 export const updateBrandSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).optional(),
-    logo: Joi.string().trim().uri().allow('').optional(),
+    logo: Joi.string().trim().allow('').optional(),
     description: Joi.string().trim().allow('').optional(),
-    website: Joi.string().trim().uri().allow('').optional(),
+    website: Joi.string().trim().allow('').optional(),
     isActive: Joi.boolean().optional(),
+    status: Joi.string().valid('Pending', 'Approved', 'Rejected').optional(),
+    country: Joi.string().trim().allow('').optional(),
+    manufacturer: Joi.string().trim().allow('').optional(),
 }).min(1);
+
+export const mergeBrandsSchema = Joi.object({
+    sourceBrandId: objectId.required(),
+    targetBrandId: objectId.required(),
+});
 
 export const removeProductSchema = Joi.object({
     reason: Joi.string().trim().min(5).max(500).required(),

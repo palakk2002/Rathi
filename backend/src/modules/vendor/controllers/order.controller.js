@@ -6,6 +6,7 @@ import Commission from '../../../models/Commission.model.js';
 import Settlement from '../../../models/Settlement.model.js';
 import mongoose from 'mongoose';
 import { createNotification } from '../../../services/notification.service.js';
+import { processSettlementForOrder } from '../../../services/payout.service.js';
 
 const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
     const statuses = (vendorItems || [])
@@ -95,6 +96,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     );
     order.status = deriveTopLevelOrderStatus(order.vendorItems, order.status);
     await order.save();
+
+    if (order.status === 'delivered') {
+        try {
+            await processSettlementForOrder(order);
+        } catch (err) {
+            console.error('Error processing settlement in vendor order update:', err);
+        }
+    }
 
     const notificationTasks = [];
     if (order.userId) {

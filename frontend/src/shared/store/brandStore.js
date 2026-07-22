@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { getAllBrands, getPublicBrands, createBrand, updateBrand, deleteBrand } from '../../modules/Admin/services/adminService';
+import { createVendorBrand } from '../../modules/Vendor/services/vendorService';
 import toast from 'react-hot-toast';
 
 export const useBrandStore = create(
@@ -48,7 +49,12 @@ export const useBrandStore = create(
       createBrand: async (brandData) => {
         set({ isLoading: true });
         try {
-          const response = await createBrand(brandData);
+          const isVendorArea =
+            typeof window !== 'undefined' &&
+            window.location.pathname.startsWith('/vendor');
+          const response = isVendorArea
+            ? await createVendorBrand(brandData)
+            : await createBrand(brandData);
           const newBrand = {
             ...response.data,
             id: response.data._id
@@ -58,7 +64,7 @@ export const useBrandStore = create(
             brands: [...state.brands, newBrand],
             isLoading: false
           }));
-          toast.success('Brand created successfully');
+          toast.success(isVendorArea ? 'Brand submitted for approval' : 'Brand created successfully');
           return newBrand;
         } catch (error) {
           set({ isLoading: false });

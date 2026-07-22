@@ -38,7 +38,8 @@
     "title": "Brands",
     "route": "/admin/brands",
     "children": [
-      "Manage Brands"
+      "Manage Brands",
+      "Brand Approvals"
     ]
   },
   {
@@ -71,6 +72,7 @@
     "children": [
       "Manage Vendors",
       "Pending Approvals",
+      "Payout Management",
       "Commission Rates",
       "Vendor Analytics"
     ]

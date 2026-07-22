@@ -69,6 +69,14 @@ const getChildRoute = (parentRoute, childName) => {
     },
     "/admin/brands": {
       "Manage Brands": "/admin/brands/manage-brands",
+      "Brand Approvals": "/admin/brands/approvals",
+    },
+    "/admin/vendors": {
+      "Manage Vendors": "/admin/vendors/manage-vendors",
+      "Pending Approvals": "/admin/vendors/pending-approvals",
+      "Payout Management": "/admin/vendors/payout-management",
+      "Commission Rates": "/admin/vendors/commission-rates",
+      "Vendor Analytics": "/admin/vendors/vendor-analytics",
     },
     "/admin/customers": {
       "View Customers": "/admin/customers/view-customers",

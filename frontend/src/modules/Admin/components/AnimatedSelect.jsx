@@ -12,6 +12,7 @@ const AnimatedSelect = ({
   searchable = false,
   required = false,
   name,
+  onCreateNew,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,13 +145,13 @@ const AnimatedSelect = ({
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
       const estimatedHeight = Math.min(
-        filteredOptions.length * 48 + (searchable ? 60 : 0),
+        filteredOptions.length * 48 + (searchable ? 60 : 0) + (onCreateNew ? 60 : 0),
         300
       );
 
       setOpenUpward(spaceBelow < estimatedHeight && spaceAbove > spaceBelow);
     }
-  }, [isOpen, filteredOptions.length, searchable]);
+  }, [isOpen, filteredOptions.length, searchable, onCreateNew]);
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -242,8 +243,24 @@ const AnimatedSelect = ({
               {/* Options List */}
               <div className="overflow-y-auto max-h-[240px] scrollbar-admin">
                 {filteredOptions.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                    {searchQuery ? "No options found" : "No options available"}
+                  <div className="px-4 py-6 text-sm text-gray-500 text-center flex flex-col items-center justify-center gap-2">
+                    <span>{searchQuery ? "No options found" : "No options available"}</span>
+                    {onCreateNew && (
+                      <div className="mt-2 pt-2 border-t border-gray-100 w-full flex flex-col items-center">
+                        <span className="text-xs text-gray-400 font-semibold">Can't find your Brand?</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsOpen(false);
+                            setSearchQuery("");
+                            onCreateNew();
+                          }}
+                          className="mt-1 px-3 py-1.5 bg-primary-50 hover:bg-primary-100 text-primary-600 rounded-lg text-xs font-bold transition-all border border-primary-200 cursor-pointer">
+                          + Create New Brand
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="py-1 flex flex-col">
@@ -276,6 +293,22 @@ const AnimatedSelect = ({
                         </motion.button>
                       );
                     })}
+                    {onCreateNew && (
+                      <div className="mt-2 p-2.5 border-t border-gray-100 bg-gray-50 flex flex-col items-center justify-center">
+                        <span className="text-xs text-gray-500 font-semibold">Can't find your Brand?</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsOpen(false);
+                            setSearchQuery("");
+                            onCreateNew();
+                          }}
+                          className="mt-1 px-3 py-1.5 bg-primary-50 hover:bg-primary-100 text-primary-600 rounded-lg text-xs font-bold transition-all border border-primary-200 cursor-pointer">
+                          + Create New Brand
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

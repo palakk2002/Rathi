@@ -8,6 +8,7 @@ import Commission from '../../../models/Commission.model.js';
 import Product from '../../../models/Product.model.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { updateStatsForUser } from '../../../services/codStats.service.js';
+import { processSettlementForOrder } from '../../../services/payout.service.js';
 
 // GET /api/admin/orders
 export const getAllOrders = asyncHandler(async (req, res) => {
@@ -171,6 +172,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     await order.save();
+
+    if (nextStatus === 'delivered') {
+        try {
+            await processSettlementForOrder(order);
+        } catch (err) {
+            console.error('Error processing settlement in admin order update:', err);
+        }
+    }
 
     if (nextStatus === 'cancelled') {
         // Reverse vendor earnings visibility for this order.
