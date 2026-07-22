@@ -25,14 +25,14 @@ import MobileLayout from "../components/Layout/MobileLayout";
 import MobileCheckoutSteps from "../components/Mobile/MobileCheckoutSteps";
 import PageTransition from "../../../shared/components/PageTransition";
 import OrderSummary from "../components/Mobile/CheckoutOrderSummary";
-
+import { loadRazorpaySDK } from "../../../shared/utils/razorpay";
 
 const MobileCheckout = () => {
   const navigate = useNavigate();
   const { items, getTotal, clearCart, getItemsByVendor } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
   const { addresses, getDefaultAddress, addAddress, fetchAddresses } = useAddressStore();
-  const { createOrder } = useOrderStore();
+  const { createOrder, verifyRazorpayPayment, cancelOrder } = useOrderStore();
 
   // Group items by vendor
   const itemsByVendor = useMemo(
@@ -61,7 +61,7 @@ const MobileCheckout = () => {
     zipCode: "",
     state: "",
     country: "",
-    paymentMethod: "card",
+    paymentMethod: "online",
   });
 
   useEffect(() => {
@@ -395,12 +395,79 @@ const MobileCheckout = () => {
           shippingOption,
         });
 
-        clearCart();
-        toast.success("Order placed successfully!");
-        navigate(`/order-confirmation/${order.id}`);
+        if (formData.paymentMethod === "online" && order?.razorpay) {
+          const isSDKLoaded = await loadRazorpaySDK();
+          if (!isSDKLoaded) {
+            toast.error("Failed to load Razorpay payment gateway. Please check your connection.");
+            setIsPlacingOrder(false);
+            return;
+          }
+
+          const options = {
+            key: order.razorpay.razorpayKeyId,
+            amount: order.razorpay.amount,
+            currency: order.razorpay.currency || "INR",
+            name: "Raathi Store",
+            description: `Order #${order.id}`,
+            order_id: order.razorpay.razorpayOrderId,
+            prefill: {
+              name: normalizedShipping.name,
+              email: normalizedShipping.email,
+              contact: normalizedShipping.phone,
+            },
+            theme: {
+              color: "#16a34a",
+            },
+            handler: async function (response) {
+              try {
+                await verifyRazorpayPayment({
+                  orderId: order.id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                });
+                clearCart();
+                toast.success("Payment successful! Order placed.");
+                navigate(`/order-confirmation/${order.id}`);
+              } catch (verifyErr) {
+                toast.error(verifyErr?.message || "Payment verification failed.");
+                await cancelOrder(order.id, "Payment verification failed");
+                setIsPlacingOrder(false);
+              }
+            },
+            modal: {
+              onDismiss: async function () {
+                toast.error("Payment cancelled. Order was cancelled to release stock.");
+                try {
+                  await cancelOrder(order.id, "Payment cancelled by customer");
+                } catch {
+                  // silent catch if already cancelled
+                }
+                setIsPlacingOrder(false);
+              },
+            },
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.on("payment.failed", async function (response) {
+            toast.error(response?.error?.description || "Payment failed.");
+            try {
+              await cancelOrder(order.id, "Payment failed");
+            } catch {
+              // silent catch
+            }
+            setIsPlacingOrder(false);
+          });
+          rzp.open();
+        } else {
+          // COD flow
+          clearCart();
+          toast.success("Order placed successfully!");
+          navigate(`/order-confirmation/${order.id}`);
+          setIsPlacingOrder(false);
+        }
       } catch (error) {
         toast.error(error?.message || "Failed to place order");
-      } finally {
         setIsPlacingOrder(false);
       }
     }
@@ -632,38 +699,43 @@ const MobileCheckout = () => {
                       </div>
                     )}
                     <div className="space-y-3 mb-6">
-                      {["card", "cash", "bank"].map((method) => {
-                        const isCod = method === "cash";
+                      {[
+                        { id: "online", label: "Online Payment", subtext: "UPI, Cards, NetBanking, Wallets via Razorpay" },
+                        { id: "cod", label: "Cash on Delivery", subtext: "Pay with cash upon delivery" }
+                      ].map((option) => {
+                        const isCod = option.id === "cod";
                         const isBlacklisted = isCod && user?.codStats?.isCodBlacklisted;
+                        const isSelected = formData.paymentMethod === option.id;
                         
                         return (
                           <label
-                            key={method}
+                            key={option.id}
                             className={`flex flex-col p-4 rounded-xl border-2 transition-all ${
                               isBlacklisted 
                                 ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed" 
-                                : formData.paymentMethod === method
+                                : isSelected
                                   ? "border-primary-500 bg-primary-50 cursor-pointer"
-                                  : "border-gray-200 cursor-pointer"
+                                  : "border-gray-200 cursor-pointer hover:border-gray-300"
                             }`}
                           >
                             <div className="flex items-center gap-3">
                               <input
                                 type="radio"
                                 name="paymentMethod"
-                                value={method}
-                                checked={formData.paymentMethod === method}
+                                value={option.id}
+                                checked={isSelected}
                                 onChange={handleInputChange}
                                 disabled={isBlacklisted}
                                 className="w-5 h-5 text-primary-500"
                               />
-                              <span className="font-semibold text-gray-800 capitalize text-base">
-                                {method === "card"
-                                  ? "Credit/Debit Card"
-                                  : method === "cash"
-                                    ? "Cash on Delivery"
-                                    : "Bank Transfer"}
-                              </span>
+                              <div>
+                                <span className="font-semibold text-gray-800 text-base">
+                                  {option.label}
+                                </span>
+                                {option.subtext && (
+                                  <p className="text-xs text-gray-500 mt-0.5">{option.subtext}</p>
+                                )}
+                              </div>
                             </div>
                             {isBlacklisted && (
                               <p className="mt-2 text-sm text-red-600 font-medium">

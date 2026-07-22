@@ -101,6 +101,9 @@ const OrderDetail = () => {
     const methods = {
       card: 'Credit/Debit Card',
       cash: 'Cash on Delivery',
+      cod: 'Cash on Delivery',
+      online: 'Online Payment (Razorpay)',
+      razorpay: 'Online Payment (Razorpay)',
       upi: 'UPI',
       wallet: 'Digital Wallet',
       bank: 'Bank Transfer'

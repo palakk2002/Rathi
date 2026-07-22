@@ -15,6 +15,7 @@ import { calculateVendorShippingForGroups } from '../../../services/vendorShippi
 import { calculateOrderGst } from '../../../services/gst.service.js';
 import { updateStatsForUser } from '../../../services/codStats.service.js';
 import CodStats from '../../../models/CodStats.model.js';
+import { createRazorpayOrder } from '../../../services/razorpay.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
 const normalizeAxisName = (value) =>
@@ -511,6 +512,42 @@ export const placeOrder = asyncHandler(async (req, res) => {
         await session.endSession();
     }
 
+    // Create Razorpay Order if online payment method is selected
+    let razorpayData = null;
+    if (order && (normalizedPaymentMethod === 'online' || normalizedPaymentMethod === 'razorpay') && !idempotentReplay) {
+        try {
+            const amountInPaise = Math.round((order.total || 0) * 100);
+            const rzpOrder = await createRazorpayOrder({
+                amount: amountInPaise,
+                receipt: String(order.orderId),
+                notes: {
+                    orderId: String(order._id),
+                    customOrderId: String(order.orderId),
+                    userId: userId ? String(userId) : 'guest',
+                },
+            });
+            order.razorpayOrderId = rzpOrder.id;
+            await order.save();
+
+            razorpayData = {
+                razorpayOrderId: rzpOrder.id,
+                razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+                amount: rzpOrder.amount,
+                currency: rzpOrder.currency || 'INR',
+            };
+        } catch (err) {
+            console.error('Failed to create Razorpay order:', err);
+            throw new ApiError(500, `Failed to initialize online payment with Razorpay: ${err.message}`);
+        }
+    } else if (order && (normalizedPaymentMethod === 'online' || normalizedPaymentMethod === 'razorpay') && idempotentReplay && order.razorpayOrderId) {
+        razorpayData = {
+            razorpayOrderId: order.razorpayOrderId,
+            razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+            amount: Math.round((order.total || 0) * 100),
+            currency: 'INR',
+        };
+    }
+
     // Update COD statistics asynchronously if user placed a COD order
     if (order && normalizedPaymentMethod === 'cod' && userId) {
         updateStatsForUser(userId).catch(err => console.error('Error updating COD stats:', err));
@@ -527,6 +564,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 orderId: order.orderId,
                 total: order.total,
                 trackingNumber: order.trackingNumber,
+                ...(razorpayData ? { razorpay: razorpayData } : {}),
                 ...(idempotentReplay ? { idempotentReplay: true } : {}),
             },
             responseMessage

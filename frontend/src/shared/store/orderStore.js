@@ -115,7 +115,10 @@ export const useOrderStore = create(
           }
 
           set({ isLoading: false, lastError: null });
-          return createdOrder;
+          return {
+            ...createdOrder,
+            razorpay: data?.razorpay || null,
+          };
         } catch (error) {
           set({ isLoading: false, lastError: error?.message || 'Failed to place order.' });
           throw error;
@@ -286,6 +289,20 @@ export const useOrderStore = create(
         const response = await api.get('/user/returns', { params: { page, limit, status } });
         const payload = response?.data ?? response;
         return payload?.returnRequests || [];
+      },
+
+      verifyRazorpayPayment: async (verificationData) => {
+        set({ isLoading: true, lastError: null });
+        try {
+          const response = await api.post('/user/payment/razorpay/verify', verificationData);
+          const data = response?.data ?? response;
+          const updatedOrder = await get().fetchOrderById(verificationData.orderId || data?.orderId);
+          set({ isLoading: false, lastError: null });
+          return updatedOrder || data;
+        } catch (error) {
+          set({ isLoading: false, lastError: error?.message || 'Payment verification failed.' });
+          throw error;
+        }
       },
 
       resetOrders: () => {

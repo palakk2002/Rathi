@@ -519,6 +519,8 @@ const AllOrders = () => {
       wallet: "Wallet",
       creditCard: "Credit Card",
       cash: "Cash on Delivery",
+      online: "Online Payment (Razorpay)",
+      razorpay: "Online Payment (Razorpay)",
     };
     return (
       methodMap[method.toLowerCase()] ||

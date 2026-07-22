@@ -308,8 +308,12 @@ const MobileOrderDetail = () => {
                 <div className="text-sm text-gray-600 space-y-2">
                   <div className="flex justify-between">
                     <span>Payment Method:</span>
-                    <span className="font-semibold text-gray-800 capitalize">
-                      {order.paymentMethod}
+                    <span className="font-semibold text-gray-800">
+                      {order.paymentMethod === 'cod' || order.paymentMethod === 'cash'
+                        ? 'Cash on Delivery'
+                        : order.paymentMethod === 'online' || order.paymentMethod === 'razorpay'
+                        ? 'Online Payment (Razorpay)'
+                        : order.paymentMethod || 'N/A'}
                     </span>
                   </div>
                   {order.trackingNumber && (

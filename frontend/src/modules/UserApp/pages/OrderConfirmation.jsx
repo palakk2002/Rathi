@@ -128,7 +128,13 @@ const MobileOrderConfirmation = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Payment Method</span>
-                  <span className="font-semibold text-gray-800 capitalize">{order.paymentMethod || 'N/A'}</span>
+                  <span className="font-semibold text-gray-800">
+                    {order.paymentMethod === 'cod' || order.paymentMethod === 'cash'
+                      ? 'Cash on Delivery'
+                      : order.paymentMethod === 'online' || order.paymentMethod === 'razorpay'
+                      ? 'Online Payment (Razorpay)'
+                      : order.paymentMethod || 'N/A'}
+                  </span>
                 </div>
               </div>
             </div>
