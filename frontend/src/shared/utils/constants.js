@@ -1,14 +1,28 @@
 // API Configuration
 const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  
+  // If running in production
   if (import.meta.env.PROD) {
-    // If running on a website in production, dynamically point to host's /api
+    const configuredUrl = import.meta.env.VITE_API_BASE_URL;
+    
+    // Check if we have a valid, non-localhost, non-placeholder production URL
+    if (
+      configuredUrl &&
+      !configuredUrl.includes('localhost') &&
+      !configuredUrl.includes('127.0.0.1') &&
+      !configuredUrl.includes('your-production-backend.com')
+    ) {
+      return configuredUrl;
+    }
+    
+    // Otherwise, dynamically fallback to the host's /api if running on a real domain
     if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       return `${window.location.origin}/api`;
     }
+  }
+
+  // In development, or if fallback rules do not apply (e.g. testing production build locally)
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
   }
   
   return 'http://localhost:5000/api';
