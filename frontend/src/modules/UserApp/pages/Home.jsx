@@ -12,6 +12,7 @@ import FeaturedVendorsSection from "../components/Mobile/FeaturedVendorsSection"
 import BrandLogosScroll from "../components/Mobile/BrandLogosScroll";
 import MobileCategoryGrid from "../components/Mobile/MobileCategoryGrid";
 import LazyImage from "../../../shared/components/LazyImage";
+import { getPlaceholderImage } from "../../../shared/utils/helpers";
 import {
   getMostPopular,
   getTrending,
@@ -547,8 +548,7 @@ const MobileHome = () => {
                         className="w-full h-full object-cover pointer-events-none select-none"
                         draggable={false}
                         onError={(e) => {
-                          e.target.src = `https://via.placeholder.com/400x200?text=Slide+${index + 1
-                            }`;
+                          e.target.src = getPlaceholderImage(400, 200, `Banner ${index + 1}`);
                         }}
                       />
                     </div>
@@ -580,7 +580,7 @@ const MobileHome = () => {
                   alt={sideBanner?.title || "Premium Watch"}
                   className="w-full h-full object-contain p-8 group-hover:scale-110 transition-transform duration-700"
                   onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/400x400?text=Premium+Watch";
+                    e.target.src = getPlaceholderImage(400, 400, "Premium Watch");
                   }}
                 />
                 <div className="absolute inset-x-0 bottom-0 p-8 z-20 flex flex-col items-center text-center">

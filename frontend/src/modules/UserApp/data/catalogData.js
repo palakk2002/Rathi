@@ -81,14 +81,18 @@ const normalizeProduct = (raw) => {
 
 const normalizeVendor = (raw) => {
   const id = normalizeId(raw?.id || raw?._id);
+  const storeName = raw?.storeName || raw?.legalBusinessName || raw?.name || "Store";
+  const totalProducts = Number(raw?.totalProducts ?? raw?.productCount ?? 0);
   return {
     ...raw,
     id,
     _id: id,
+    storeName,
     isVerified: !!raw?.isVerified,
     rating: Number(raw?.rating) || 0,
     reviewCount: Number(raw?.reviewCount) || 0,
-    totalProducts: Number(raw?.totalProducts) || 0,
+    totalProducts,
+    productCount: totalProducts,
     status: raw?.status || "approved",
   };
 };

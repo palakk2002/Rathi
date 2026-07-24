@@ -111,6 +111,7 @@ import AppBootstrap from "./shared/components/AppBootstrap";
 import MobileHome from "./modules/UserApp/pages/Home";
 import MobileProductDetail from "./modules/UserApp/pages/ProductDetail";
 import MobileSeller from "./modules/UserApp/pages/Seller";
+import MobileStores from "./modules/UserApp/pages/Stores";
 import MobileCategory from "./modules/UserApp/pages/Category";
 import MobileBrand from "./modules/UserApp/pages/Brand";
 import MobileCategories from "./modules/UserApp/pages/categories";
@@ -229,6 +230,14 @@ const AppRoutes = () => {
         element={
           <RouteWrapper>
             <MobileSeller />
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/stores"
+        element={
+          <RouteWrapper>
+            <MobileStores />
           </RouteWrapper>
         }
       />

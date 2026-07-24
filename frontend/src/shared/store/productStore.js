@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import * as adminService from '../../modules/Admin/services/adminService';
+import { getProducts } from '../../modules/Admin/services/adminService';
+import { getPlaceholderImage } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 export const useProductStore = create((set, get) => ({
@@ -15,7 +16,7 @@ export const useProductStore = create((set, get) => ({
     fetchProducts: async (params = {}) => {
         set({ isLoading: true });
         try {
-            const response = await adminService.getAllProducts(params);
+            const response = await getProducts(params);
             // Check if response.data is an array or object with products
             const productsData = Array.isArray(response.data) ? response.data : (response.data.products || []);
             const normalizedProducts = productsData.map(p => ({
@@ -23,7 +24,7 @@ export const useProductStore = create((set, get) => ({
                 id: p._id,
                 stockQuantity: p.stockQuantity || 0,
                 price: p.price || 0,
-                image: p.images?.[0] || 'https://via.placeholder.com/50x50?text=Product'
+                image: p.image || p.images?.[0] || getPlaceholderImage(50, 50, "Product")
             }));
 
             set({

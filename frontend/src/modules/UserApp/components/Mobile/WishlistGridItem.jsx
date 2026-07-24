@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiShoppingBag, FiTrash2, FiStar, FiHeart } from 'react-icons/fi';
-import { formatPrice } from '../../../../shared/utils/helpers';
+import { formatPrice, getPlaceholderImage } from '../../../../shared/utils/helpers';
 import LazyImage from '../../../../shared/components/LazyImage';
 import { useCartStore } from '../../../../shared/store/useStore';
 import toast from 'react-hot-toast';
@@ -49,12 +49,12 @@ const WishlistGridItem = ({ item, index, onMoveToCart, onRemove }) => {
         <Link to={`/product/${item.id}`}>
           <div className="w-full h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden relative">
             <LazyImage
-              src={item.image}
+              src={item.image || getPlaceholderImage(300, 300, item.name || "Product")}
               alt={item.name}
               className="w-full h-full object-contain p-2"
               style={{ willChange: 'transform', transform: 'translateZ(0)' }}
               onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/300x300?text=Product+Image';
+                e.target.src = getPlaceholderImage(300, 300, item.name || "Product");
               }}
             />
           </div>

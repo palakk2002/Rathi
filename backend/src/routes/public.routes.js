@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiResponse from '../utils/ApiResponse.js';
@@ -13,13 +14,22 @@ import { calculateVendorShippingForGroups } from '../services/vendorShipping.ser
 
 const router = Router();
 
-const toPublicVendor = (vendorDoc) => {
+const toPublicVendor = (vendorDoc, productCount = 0) => {
     const vendor = typeof vendorDoc?.toObject === 'function'
         ? vendorDoc.toObject()
         : (vendorDoc || {});
 
+    const vendorIdStr = vendor._id ? String(vendor._id) : (vendor.id ? String(vendor.id) : '');
+    const resolvedStoreName = vendor.storeName || vendor.legalBusinessName || vendor.name || 'Store';
+    const count = Number(productCount ?? vendor.totalProducts ?? vendor.productCount ?? 0);
+
     return {
         ...vendor,
+        id: vendorIdStr,
+        _id: vendorIdStr,
+        storeName: resolvedStoreName,
+        totalProducts: count,
+        productCount: count,
         password: undefined,
         otp: undefined,
         otpExpiry: undefined,
@@ -109,10 +119,46 @@ const listProducts = asyncHandler(async (req, res) => {
     const filter = { isActive: true, isReviewRemoved: { $ne: true } };
 
     if (category) {
-        const categoryId = String(category);
-        const childCategories = await Category.find({ parentId: categoryId }).select('_id');
-        const categoryIds = [categoryId, ...childCategories.map((cat) => String(cat._id))];
-        filter.categoryId = { $in: categoryIds };
+        const rawCat = String(category || '').trim();
+        let targetCategoryIds = [];
+
+        if (mongoose.Types.ObjectId.isValid(rawCat)) {
+            const catObjId = new mongoose.Types.ObjectId(rawCat);
+            targetCategoryIds.push(catObjId);
+
+            const childCategories = await Category.find({
+                $or: [{ parentId: catObjId }, { parentId: rawCat }]
+            }).select('_id');
+
+            const childIds = childCategories.map((cat) => cat._id);
+            targetCategoryIds.push(...childIds);
+
+            if (childIds.length > 0) {
+                const grandChildCategories = await Category.find({
+                    parentId: { $in: childIds }
+                }).select('_id');
+                targetCategoryIds.push(...grandChildCategories.map((cat) => cat._id));
+            }
+        } else {
+            const matchedCats = await Category.find({
+                $or: [{ slug: rawCat }, { name: new RegExp(rawCat, 'i') }]
+            }).select('_id');
+            const matchedIds = matchedCats.map((cat) => cat._id);
+            targetCategoryIds.push(...matchedIds);
+
+            if (matchedIds.length > 0) {
+                const childCats = await Category.find({
+                    parentId: { $in: matchedIds }
+                }).select('_id');
+                targetCategoryIds.push(...childCats.map((cat) => cat._id));
+            }
+        }
+
+        if (targetCategoryIds.length > 0) {
+            filter.categoryId = { $in: targetCategoryIds };
+        } else {
+            filter.categoryId = rawCat;
+        }
     }
     if (brand) filter.brandId = brand;
     if (vendor) filter.vendorId = vendor;
@@ -121,7 +167,20 @@ const listProducts = asyncHandler(async (req, res) => {
     if (minPrice || maxPrice) filter.price = { ...(minPrice && { $gte: Number(minPrice) }), ...(maxPrice && { $lte: Number(maxPrice) }) };
     if (minRating) filter.rating = { $gte: Number(minRating) };
     const searchQuery = String(search || q || '').trim();
-    if (searchQuery) filter.$text = { $search: searchQuery };
+    if (searchQuery) {
+        const safeRegex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        const matchingVendors = await Vendor.find({
+            status: 'approved',
+            $or: [{ name: safeRegex }, { storeName: safeRegex }, { legalBusinessName: safeRegex }]
+        }).select('_id');
+        const matchingVendorIds = matchingVendors.map(v => v._id);
+
+        filter.$or = [
+            { name: safeRegex },
+            { description: safeRegex },
+            ...(matchingVendorIds.length > 0 ? [{ vendorId: { $in: matchingVendorIds } }] : [])
+        ];
+    }
 
     const sortMap = { newest: { createdAt: -1 }, oldest: { createdAt: 1 }, 'price-asc': { price: 1 }, 'price-desc': { price: -1 }, popular: { reviewCount: -1 }, rating: { rating: -1 } };
 
@@ -282,7 +341,7 @@ router.get('/vendors/all', asyncHandler(async (req, res) => {
     const trimmedSearch = String(search || '').trim();
     if (trimmedSearch) {
         const safeRegex = new RegExp(trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [{ name: safeRegex }, { email: safeRegex }, { storeName: safeRegex }];
+        filter.$or = [{ name: safeRegex }, { email: safeRegex }, { storeName: safeRegex }, { legalBusinessName: safeRegex }];
     }
 
     const vendors = await Vendor.find(filter)
@@ -292,8 +351,26 @@ router.get('/vendors/all', asyncHandler(async (req, res) => {
         .limit(numericLimit);
     const total = await Vendor.countDocuments(filter);
 
+    const vendorIds = vendors.map((v) => v._id);
+    const productCounts = await Product.aggregate([
+        { $match: { vendorId: { $in: vendorIds }, isActive: true, isReviewRemoved: { $ne: true } } },
+        { $group: { _id: '$vendorId', count: { $sum: 1 } } }
+    ]);
+
+    const countMap = {};
+    productCounts.forEach((item) => {
+        if (item._id) {
+            countMap[String(item._id)] = item.count;
+        }
+    });
+
+    const publicVendors = vendors.map((vendor) => {
+        const vId = String(vendor._id);
+        return toPublicVendor(vendor, countMap[vId] || 0);
+    });
+
     res.status(200).json(new ApiResponse(200, {
-        vendors: vendors.map(toPublicVendor),
+        vendors: publicVendors,
         total,
         page: numericPage,
         pages: Math.ceil(total / numericLimit)
@@ -307,7 +384,14 @@ router.get('/vendors/:id', asyncHandler(async (req, res) => {
         status: 'approved',
     }).select('-password -otp -otpExpiry');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
-    res.status(200).json(new ApiResponse(200, toPublicVendor(vendor), 'Vendor detail fetched.'));
+
+    const productCount = await Product.countDocuments({
+        vendorId: vendor._id,
+        isActive: true,
+        isReviewRemoved: { $ne: true }
+    });
+
+    res.status(200).json(new ApiResponse(200, toPublicVendor(vendor, productCount), 'Vendor detail fetched.'));
 }));
 
 // GET /api/vendors/:id/products (public)

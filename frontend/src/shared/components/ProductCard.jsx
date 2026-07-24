@@ -211,12 +211,12 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
                 </div>
               )}
               <LazyImage
-                src={product.image}
+                src={product.image || getPlaceholderImage(300, 300, product.name || "Product Image")}
                 alt={product.name}
                 className="w-full h-full object-contain p-2 md:p-4 group-hover:scale-110 transition-transform duration-500"
                 style={{ willChange: "transform", transform: "translateZ(0)" }}
                 onError={(e) => {
-                  e.target.src = getPlaceholderImage(300, 300, "Product Image");
+                  e.target.src = getPlaceholderImage(300, 300, product.name || "Product Image");
                 }}
               />
             </div>

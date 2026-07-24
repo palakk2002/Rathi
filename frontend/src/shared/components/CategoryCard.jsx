@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { getCategoryFallbackImage } from "../utils/helpers";
 
 const CategoryCard = ({ category }) => {
   const categoryLink = `/category/${category.id}`;
+  const categoryImage = category.image || getCategoryFallbackImage(category.name);
 
   return (
     <Link to={categoryLink} className="block h-full">
@@ -11,12 +13,11 @@ const CategoryCard = ({ category }) => {
         className="glass-card rounded-2xl overflow-hidden cursor-pointer hover-lift group h-full flex flex-col">
         <div className="w-full h-24 md:h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden relative">
           <img
-            src={category.image}
+            src={categoryImage}
             alt={category.name}
             className="w-full h-full object-contain scale-50 group-hover:scale-65 transition-transform duration-500"
             onError={(e) => {
-              e.target.src =
-                "https://via.placeholder.com/200x200?text=Category";
+              e.target.src = getCategoryFallbackImage(category.name);
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

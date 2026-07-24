@@ -3,16 +3,17 @@ import { FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import LazyImage from "../LazyImage";
 import useSwipeGesture from "../../../modules/UserApp/hooks/useSwipeGesture";
+import { getPlaceholderImage } from "../../utils/helpers";
 
 const ImageGallery = ({ images, productName = "Product", children }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
+  const defaultPlaceholder = getPlaceholderImage(500, 500, productName || "Product");
+
   // Ensure images is an array
-  const imageArray =
-    Array.isArray(images) && images.length > 0
-      ? images
-      : [images].filter(Boolean);
+  const rawArray = Array.isArray(images) ? images.filter(Boolean) : images ? [images] : [];
+  const imageArray = rawArray.length > 0 ? rawArray : [defaultPlaceholder];
 
   if (imageArray.length === 0) {
     return (
@@ -69,8 +70,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
               alt={`${productName} - Image ${selectedIndex + 1}`}
               className="w-full h-full object-contain mix-blend-multiply"
               onError={(e) => {
-                e.target.src =
-                  "https://via.placeholder.com/500x500?text=Product+Image";
+                e.target.src = defaultPlaceholder;
               }}
             />
           </motion.div>
@@ -116,8 +116,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
                   alt={`${productName} thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src =
-                      "https://via.placeholder.com/100x100?text=Thumbnail";
+                    e.target.src = getPlaceholderImage(100, 100, "Thumbnail");
                   }}
                 />
               </button>
@@ -152,8 +151,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
                 alt={`${productName} - Full view`}
                 className="w-full h-full object-contain max-h-[90vh] rounded-lg"
                 onError={(e) => {
-                  e.target.src =
-                    "https://via.placeholder.com/800x800?text=Product+Image";
+                  e.target.src = defaultPlaceholder;
                 }}
               />
 

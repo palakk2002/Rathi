@@ -16,8 +16,11 @@ const normalizeVendor = (raw) => ({
     ...raw,
     id: String(raw?.id || raw?._id || ""),
     _id: String(raw?.id || raw?._id || ""),
+    storeName: raw?.storeName || raw?.legalBusinessName || raw?.name || "Store",
     rating: Number(raw?.rating) || 0,
     reviewCount: Number(raw?.reviewCount) || 0,
+    totalProducts: Number(raw?.totalProducts ?? raw?.productCount ?? 0),
+    productCount: Number(raw?.totalProducts ?? raw?.productCount ?? 0),
     isVerified: !!raw?.isVerified,
 });
 

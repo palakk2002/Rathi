@@ -10,6 +10,7 @@ import PageTransition from "../../../shared/components/PageTransition";
 import LazyImage from "../../../shared/components/LazyImage";
 import ProductCard from "../../../shared/components/ProductCard";
 import api from "../../../shared/utils/api";
+import { getCategoryFallbackImage } from "../../../shared/utils/helpers";
 
 const normalizeId = (value) => String(value ?? "").trim();
 
@@ -82,22 +83,18 @@ const MobileCategories = () => {
     if (roots.length === 0) {
       return fallbackCategories;
     }
-    // Keep backend values as source of truth.
-    // Use fallback image only when backend category has no image.
     return roots.map((cat) => {
       const fallbackCat = fallbackCategories.find(
         (fc) =>
           normalizeId(fc.id) === normalizeId(cat.id) ||
           fc.name?.toLowerCase() === cat.name?.toLowerCase()
       );
-      if (fallbackCat) {
-        return {
-          ...fallbackCat,
-          ...cat,
-          image: cat.image || fallbackCat.image,
-        };
-      }
-      return cat;
+      const img = cat.image || fallbackCat?.image || getCategoryFallbackImage(cat.name);
+      return {
+        ...(fallbackCat || {}),
+        ...cat,
+        image: img,
+      };
     });
   }, [categories, getRootCategories]);
 
@@ -139,14 +136,10 @@ const MobileCategories = () => {
     }
   }, [rootCategories, selectedCategoryId]);
 
-  // Reset selected subcategory when category changes
+  // Reset selected subcategory when category changes (default to null = All Products)
   useEffect(() => {
-    if (subcategories.length > 0) {
-      setSelectedSubcategory(subcategories[0].id);
-    } else {
-      setSelectedSubcategory(null);
-    }
-  }, [selectedCategoryId, subcategories]);
+    setSelectedSubcategory(null);
+  }, [selectedCategoryId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -629,6 +622,17 @@ const MobileCategories = () => {
                         WebkitOverflowScrolling: "touch",
                       }}>
                       <div className="flex gap-1.5">
+                        <motion.button
+                          onClick={() => setSelectedSubcategory(null)}
+                          whileTap={{ scale: 0.97 }}
+                          className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap border ${
+                            !selectedSubcategory
+                              ? "bg-primary-600 text-white border-primary-600 shadow-sm"
+                              : "bg-gray-50 text-gray-600 border-gray-200 active:bg-gray-100"
+                          }`}
+                        >
+                          All Products
+                        </motion.button>
                         {subcategories.map((subcategory) => {
                           const isActive =
                             normalizeId(selectedSubcategory) ===
@@ -641,7 +645,7 @@ const MobileCategories = () => {
                               }
                               whileTap={{ scale: 0.97 }}
                               className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap border ${isActive
-                                ? "bg-white text-primary-600 border-primary-200 shadow-sm"
+                                ? "bg-primary-600 text-white border-primary-600 shadow-sm font-semibold"
                                 : "bg-gray-50 text-gray-600 border-gray-200 active:bg-gray-100"
                                 }`}
                               style={{ willChange: "transform" }}>

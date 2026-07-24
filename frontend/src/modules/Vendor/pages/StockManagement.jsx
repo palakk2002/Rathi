@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import DataTable from "../../Admin/components/DataTable";
 import ExportButton from "../../Admin/components/ExportButton";
 import Badge from "../../../shared/components/Badge";
+import { getPlaceholderImage } from "../../../shared/utils/helpers";
 import AnimatedSelect from "../../Admin/components/AnimatedSelect";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
@@ -394,11 +395,11 @@ const StockUpdateModal = ({
                 </div>
                 <div className="flex items-center gap-3">
                   <img
-                    src={product.image || product.images?.[0] || "https://via.placeholder.com/100x100?text=Product"}
+                    src={product.image || product.images?.[0] || getPlaceholderImage(100, 100, product.name || "Product")}
                     alt={product.name}
                     className="w-16 h-16 object-cover rounded-lg"
                     onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/100x100?text=Product";
+                      e.target.src = getPlaceholderImage(100, 100, product.name || "Product");
                     }}
                   />
                   <div>

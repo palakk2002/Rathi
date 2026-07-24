@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
@@ -56,6 +56,7 @@ const normalizeProduct = (raw) => {
 };
 
 const MobileSearch = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { categories: storeCategories, initialize: initializeCategories } = useCategoryStore();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -259,6 +260,15 @@ const MobileSearch = () => {
   }, [fetchResults, searchParams, sortBy]);
 
   const filteredProducts = useMemo(() => products, [products]);
+
+  const matchingSearchStores = useMemo(() => {
+    const q = String(searchParams.get('q') || searchQuery || '').trim().toLowerCase();
+    if (!q) return [];
+    return approvedVendors.filter((v) => {
+      const sName = (v.storeName || v.legalBusinessName || v.name || '').toLowerCase();
+      return sName.includes(q);
+    });
+  }, [searchParams, searchQuery, approvedVendors]);
 
   const hasMore = pagination.page < pagination.pages;
   const loadMoreRef = useRef(null);
@@ -755,8 +765,60 @@ const MobileSearch = () => {
             </div>
           </div>
 
-          {/* Products List */}
+          {/* Products List & Matching Stores */}
           <div className="px-4 py-4 lg:p-6">
+            {matchingSearchStores.length > 0 && (
+              <div className="mb-6 bg-purple-50/70 p-4 rounded-2xl border border-purple-100 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FiShoppingBag className="text-purple-600 text-lg" />
+                    <h3 className="font-bold text-gray-800 text-sm">
+                      Matching Stores ({matchingSearchStores.length})
+                    </h3>
+                  </div>
+                  <Link
+                    to="/stores"
+                    className="text-xs font-semibold text-purple-600 hover:text-purple-700"
+                  >
+                    View All Stores
+                  </Link>
+                </div>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+                  {matchingSearchStores.map((vendor) => (
+                    <motion.div
+                      key={vendor.id || vendor._id}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => navigate(`/seller/${vendor.id || vendor._id}`)}
+                      className="bg-white p-3 rounded-xl border border-purple-100 shadow-sm hover:shadow flex items-center gap-3 cursor-pointer min-w-[210px]"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+                        {vendor.storeLogo ? (
+                          <img
+                            src={vendor.storeLogo}
+                            alt={vendor.storeName || vendor.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          (vendor.storeName || vendor.name || 'S').charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-gray-800 text-xs truncate">
+                          {vendor.storeName || vendor.name}
+                        </h4>
+                        <p className="text-[10px] text-gray-500">
+                          {vendor.totalProducts || vendor.productCount || 0} Products
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                        Visit
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isLoadingResults ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-2 text-gray-600">

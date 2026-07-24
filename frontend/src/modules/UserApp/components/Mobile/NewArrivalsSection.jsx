@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FiTag } from "react-icons/fi";
 import LazyImage from "../../../../shared/components/LazyImage";
 import { getNewArrivals } from "../../data/catalogData";
+import { getPlaceholderImage } from "../../../../shared/utils/helpers";
 
 const NewArrivalsSection = ({ products = null }) => {
   const fallback = getNewArrivals(6);
@@ -168,12 +169,11 @@ const NewArrivalsSection = ({ products = null }) => {
                     className="rounded-xl overflow-hidden aspect-square bg-white/10 backdrop-blur-sm relative">
                     <div className="w-full h-full relative overflow-hidden">
                       <LazyImage
-                        src={product.image}
+                        src={product.image || getPlaceholderImage(300, 300, product.name || "Product")}
                         alt={product.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         onError={(e) => {
-                          e.target.src =
-                            "https://via.placeholder.com/300x300?text=Product+Image";
+                          e.target.src = getPlaceholderImage(300, 300, product.name || "Product");
                         }}
                       />
                       {/* Hover Overlay */}

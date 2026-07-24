@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { categories as fallbackCategories } from "../../../../data/categories";
 import LazyImage from "../../../../shared/components/LazyImage";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
+import { getCategoryFallbackImage } from "../../../../shared/utils/helpers";
 
 const normalizeId = (value) => String(value ?? "").trim();
 
@@ -24,10 +25,11 @@ const MobileCategoryGrid = () => {
           normalizeId(fc.id) === normalizeId(cat.id) ||
           fc.name?.toLowerCase() === cat.name?.toLowerCase()
       );
+      const img = cat.image || fallbackCat?.image || getCategoryFallbackImage(cat.name);
       return {
         ...(fallbackCat || {}),
         ...cat,
-        image: cat.image || fallbackCat?.image || "",
+        image: img,
       };
     });
   }, [categories, getRootCategories]);
@@ -50,12 +52,11 @@ const MobileCategoryGrid = () => {
               className="flex flex-col items-center gap-2 w-20">
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 ring-2 ring-gray-200">
                 <LazyImage
-                  src={category.image}
+                  src={category.image || getCategoryFallbackImage(category.name)}
                   alt={category.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src =
-                      "https://via.placeholder.com/64x64?text=Category";
+                    e.target.src = getCategoryFallbackImage(category.name);
                   }}
                 />
               </div>

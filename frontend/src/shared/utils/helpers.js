@@ -94,3 +94,11 @@ export const getPlaceholderImage = (
 
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 };
+
+/**
+ * Get category fallback avatar image URL
+ */
+export const getCategoryFallbackImage = (name = "Category") => {
+  const cleanName = String(name || "Category").trim();
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=7C3AED&color=fff&size=128&bold=true`;
+};

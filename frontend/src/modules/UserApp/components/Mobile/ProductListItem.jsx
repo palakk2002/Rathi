@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { FiShoppingBag, FiHeart, FiTrash2 } from "react-icons/fi";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
-import { formatPrice } from "../../../../shared/utils/helpers";
+import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpers";
 import toast from "react-hot-toast";
 import LazyImage from '../../../../shared/components/LazyImage';
 import VendorBadge from "../../../Vendor/components/VendorBadge";
@@ -102,11 +102,11 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
         <Link to={productLink} className="flex-shrink-0 relative group">
           <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 p-2">
             <LazyImage
-              src={product.image}
+              src={product.image || getPlaceholderImage(200, 200, product.name || "Product")}
               alt={product.name}
               className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
               onError={(e) => {
-                e.target.src = "https://via.placeholder.com/200x200?text=Product";
+                e.target.src = getPlaceholderImage(200, 200, product.name || "Product");
               }}
             />
           </div>
