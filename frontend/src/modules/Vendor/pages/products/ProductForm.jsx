@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiSave, FiX, FiUpload } from "react-icons/fi";
+import { FiSave, FiX, FiUpload, FiInfo } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
@@ -212,8 +212,8 @@ const ProductForm = () => {
     const normalizedCategoryId = normalizeId(product.categoryId);
     const normalizedBrandId = normalizeId(product.brandId);
     const normalizedSubcategoryId = normalizeId(product.subcategoryId);
-    const category = cats.find(
-      (cat) => String(cat._id ?? cat.id) === String(normalizedCategoryId)
+    const category = (cats || []).find(
+      (cat) => cat && String(cat._id ?? cat.id) === String(normalizedCategoryId)
     );
     const normalizedParentCategoryId = normalizeId(category?.parentId);
     const isSubcategory = Boolean(normalizedParentCategoryId);
@@ -702,8 +702,8 @@ const ProductForm = () => {
                 onCreateNew={() => setShowBrandModal(true)}
                 options={[
                   { value: "", label: "Select Brand" },
-                  ...brands
-                    .filter((brand) => brand.isActive !== false)
+                  ...(brands || [])
+                    .filter((brand) => brand && brand.isActive !== false)
                     .map((brand) => ({ value: String(brand.id), label: brand.name })),
                 ]}
               />
@@ -762,7 +762,7 @@ const ProductForm = () => {
               />
             </div>
           </div>
-          {gstPreview && gstPreview.effective && (
+          {gstPreview && gstPreview.effective && gstPreview.calculations && (
             <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                 <FiInfo className="text-sm" /> Applied GST Configuration (Read-only)
@@ -781,15 +781,15 @@ const ProductForm = () => {
                 )}
                 <div>
                   <span className="text-gray-500 text-xs block font-semibold">Base Price</span>
-                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.basePrice).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.basePrice || 0).toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs block font-semibold">GST Amount</span>
-                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.gstAmount).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.gstAmount || 0).toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs block font-semibold text-primary-700">Final Price</span>
-                  <span className="font-black text-primary-700">Rs. {parseFloat(gstPreview.calculations.totalPrice).toFixed(2)}</span>
+                  <span className="font-black text-primary-700">Rs. {parseFloat(gstPreview.calculations.totalPrice || 0).toFixed(2)}</span>
                 </div>
               </div>
             </div>

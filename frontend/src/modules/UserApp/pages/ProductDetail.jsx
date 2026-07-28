@@ -751,7 +751,7 @@ const MobileProductDetail = () => {
                       if (!isInCart) {
                         handleAddToCart();
                       }
-                      navigate("/cart");
+                      navigate("/checkout");
                     }}
                     disabled={product.stock === "out_of_stock"}
                     className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"

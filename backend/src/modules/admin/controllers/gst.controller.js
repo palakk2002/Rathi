@@ -45,7 +45,7 @@ export const getGstRuleById = asyncHandler(async (req, res) => {
 // POST /api/admin/gst/rules
 export const createGstRule = asyncHandler(async (req, res) => {
     const { name, rate, hsnCode, type, categoryId, productId, description, reason } = req.body;
-    const adminId = req.user._id;
+    const adminId = req.user.id || req.user._id;
 
     // Check uniqueness constraint
     if (type === 'global') {
@@ -94,7 +94,7 @@ export const createGstRule = asyncHandler(async (req, res) => {
 // PUT /api/admin/gst/rules/:id
 export const updateGstRule = asyncHandler(async (req, res) => {
     const { name, rate, hsnCode, description, categoryId, productId, reason, isActive } = req.body;
-    const adminId = req.user._id;
+    const adminId = req.user.id || req.user._id;
 
     const rule = await GstRule.findById(req.params.id);
     if (!rule) {
@@ -103,20 +103,30 @@ export const updateGstRule = asyncHandler(async (req, res) => {
 
     const oldValueSnapshot = rule.toObject();
 
-    // Check uniqueness if updating to active
-    if (isActive === true && rule.isActive === false) {
+    // Check uniqueness if the rule is active or is being activated
+    const newActive = isActive !== undefined ? isActive : rule.isActive;
+    const newCategoryId = categoryId !== undefined ? categoryId : rule.categoryId;
+    const newProductId = productId !== undefined ? productId : rule.productId;
+
+    if (newActive) {
         if (rule.type === 'global') {
-            const existingGlobal = await GstRule.findOne({ type: 'global', isActive: true });
+            const existingGlobal = await GstRule.findOne({ type: 'global', isActive: true, _id: { $ne: rule._id } });
             if (existingGlobal) {
                 throw new ApiError(400, 'Another active Global GST Rule already exists.');
             }
         } else if (rule.type === 'category') {
-            const existingCategory = await GstRule.findOne({ type: 'category', categoryId: rule.categoryId, isActive: true });
+            if (!newCategoryId) {
+                throw new ApiError(400, 'Category ID is required for Category rule.');
+            }
+            const existingCategory = await GstRule.findOne({ type: 'category', categoryId: newCategoryId, isActive: true, _id: { $ne: rule._id } });
             if (existingCategory) {
                 throw new ApiError(400, 'Another active GST rule already exists for this Category.');
             }
         } else if (rule.type === 'product') {
-            const existingProduct = await GstRule.findOne({ type: 'product', productId: rule.productId, isActive: true });
+            if (!newProductId) {
+                throw new ApiError(400, 'Product ID is required for Product rule override.');
+            }
+            const existingProduct = await GstRule.findOne({ type: 'product', productId: newProductId, isActive: true, _id: { $ne: rule._id } });
             if (existingProduct) {
                 throw new ApiError(400, 'Another active GST override rule already exists for this Product.');
             }
@@ -128,6 +138,8 @@ export const updateGstRule = asyncHandler(async (req, res) => {
     if (hsnCode !== undefined) rule.hsnCode = hsnCode;
     if (description !== undefined) rule.description = description;
     if (isActive !== undefined) rule.isActive = isActive;
+    if (categoryId !== undefined) rule.categoryId = categoryId || null;
+    if (productId !== undefined) rule.productId = productId || null;
     rule.updatedBy = adminId;
 
     await rule.save();
@@ -147,7 +159,7 @@ export const updateGstRule = asyncHandler(async (req, res) => {
 
 // PATCH /api/admin/gst/rules/:id/toggle
 export const toggleGstRule = asyncHandler(async (req, res) => {
-    const adminId = req.user._id;
+    const adminId = req.user.id || req.user._id;
     const { reason } = req.body;
 
     const rule = await GstRule.findById(req.params.id);
@@ -196,7 +208,7 @@ export const toggleGstRule = asyncHandler(async (req, res) => {
 
 // DELETE /api/admin/gst/rules/:id
 export const deleteGstRule = asyncHandler(async (req, res) => {
-    const adminId = req.user._id;
+    const adminId = req.user.id || req.user._id;
     const { reason } = req.body;
 
     const rule = await GstRule.findById(req.params.id);

@@ -98,6 +98,44 @@ const resolveVariantPrice = (product, selectedVariant) => {
     return basePrice;
 };
 
+const enrichProductsWithGst = async (products) => {
+    if (!products) return products;
+    const { getEffectiveGstRate, calculateGst } = await import('../services/gst.service.js');
+    const isArray = Array.isArray(products);
+    const list = isArray ? products : [products];
+    const enriched = await Promise.all(list.map(async (p) => {
+        const productObj = typeof p.toObject === 'function' ? p.toObject() : p;
+        const effective = await getEffectiveGstRate(productObj._id || productObj.id, productObj.categoryId?._id || productObj.categoryId);
+        if (!productObj.taxIncluded) {
+            const calculations = calculateGst(productObj.price, effective.rate, false);
+            productObj.price = calculations.totalPrice;
+            if (productObj.originalPrice) {
+                const calculationsOriginal = calculateGst(productObj.originalPrice, effective.rate, false);
+                productObj.originalPrice = calculationsOriginal.totalPrice;
+            }
+            productObj.taxIncluded = true;
+        }
+        
+        // Also adjust variants if they exist
+        if (productObj.variants && productObj.variants.prices) {
+            let pricesMap = productObj.variants.prices;
+            const entries = pricesMap instanceof Map 
+                ? Array.from(pricesMap.entries()) 
+                : Object.entries(pricesMap || {});
+            
+            const newPrices = {};
+            for (const [key, value] of entries) {
+                const calcVal = calculateGst(Number(value) || 0, effective.rate, false);
+                newPrices[key] = calcVal.totalPrice;
+            }
+            productObj.variants.prices = newPrices;
+        }
+        
+        return productObj;
+    }));
+    return isArray ? enriched : enriched[0];
+};
+
 // GET /api/products — list with filters
 const listProducts = asyncHandler(async (req, res) => {
     const {
@@ -186,8 +224,9 @@ const listProducts = asyncHandler(async (req, res) => {
 
     const products = await Product.find(filter).populate('categoryId', 'name').populate('brandId', 'name').populate('vendorId', 'storeName').sort(sortMap[sort] || { createdAt: -1 }).skip(skip).limit(Number(limit));
     const total = await Product.countDocuments(filter);
+    const enrichedProducts = await enrichProductsWithGst(products);
 
-    res.status(200).json(new ApiResponse(200, { products, total, page: Number(page), pages: Math.ceil(total / limit) }, 'Products fetched.'));
+    res.status(200).json(new ApiResponse(200, { products: enrichedProducts, total, page: Number(page), pages: Math.ceil(total / limit) }, 'Products fetched.'));
 });
 
 router.get('/', listProducts);
@@ -249,8 +288,10 @@ router.get('/new-arrivals', asyncHandler(async (req, res) => {
         Product.countDocuments(filter),
     ]);
 
+    const enrichedProducts = await enrichProductsWithGst(products);
+
     res.status(200).json(new ApiResponse(200, {
-        products,
+        products: enrichedProducts,
         total,
         page: numericPage,
         pages: Math.ceil(total / numericLimit),
@@ -260,7 +301,8 @@ router.get('/new-arrivals', asyncHandler(async (req, res) => {
 // GET /api/products/popular
 router.get('/popular', asyncHandler(async (req, res) => {
     const products = await Product.find({ isActive: true, isReviewRemoved: { $ne: true } }).sort({ reviewCount: -1, rating: -1 }).limit(10);
-    res.status(200).json(new ApiResponse(200, products, 'Popular products.'));
+    const enrichedProducts = await enrichProductsWithGst(products);
+    res.status(200).json(new ApiResponse(200, enrichedProducts, 'Popular products.'));
 }));
 
 // GET /api/products/similar/:id
@@ -268,7 +310,8 @@ router.get('/similar/:id', asyncHandler(async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) throw new ApiError(404, 'Product not found.');
     const similar = await Product.find({ isActive: true, isReviewRemoved: { $ne: true }, _id: { $ne: product._id }, categoryId: product.categoryId }).limit(6);
-    res.status(200).json(new ApiResponse(200, similar, 'Similar products.'));
+    const enrichedSimilar = await enrichProductsWithGst(similar);
+    res.status(200).json(new ApiResponse(200, enrichedSimilar, 'Similar products.'));
 }));
 
 const getProductDetail = asyncHandler(async (req, res) => {
@@ -277,7 +320,8 @@ const getProductDetail = asyncHandler(async (req, res) => {
     if (product.isReviewRemoved) {
         throw new ApiError(400, 'This product is currently unavailable.');
     }
-    res.status(200).json(new ApiResponse(200, product, 'Product detail.'));
+    const enrichedProduct = await enrichProductsWithGst(product);
+    res.status(200).json(new ApiResponse(200, enrichedProduct, 'Product detail.'));
 });
 
 // GET /api/products/:id

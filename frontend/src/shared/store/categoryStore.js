@@ -147,7 +147,7 @@ export const useCategoryStore = create(
 
       // Get categories by parent
       getCategoriesByParent: (parentId) => {
-        return get().categories.filter((cat) => {
+        return (get().categories || []).filter((cat) => {
           const normalizedParent = typeof cat.parentId === 'object'
             ? (cat.parentId?._id ?? cat.parentId?.id ?? null)
             : cat.parentId;
@@ -159,7 +159,7 @@ export const useCategoryStore = create(
 
       // Get root categories
       getRootCategories: () => {
-        return get().categories.filter((cat) => !cat.parentId);
+        return (get().categories || []).filter((cat) => cat && !cat.parentId);
       },
 
       // Reorder categories

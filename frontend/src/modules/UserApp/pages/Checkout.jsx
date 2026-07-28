@@ -157,7 +157,7 @@ const MobileCheckout = () => {
       }
       try {
         const bodyItems = items.map(item => ({
-          productId: item.productId,
+          productId: item.id || item.productId,
           quantity: item.quantity,
           price: item.price,
           variant: item.variant || {},
