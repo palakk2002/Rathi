@@ -96,6 +96,57 @@ export const useAuthStore = create(
         }
       },
 
+      // Send OTP to phone
+      sendOtpPhone: async (phone) => {
+        set({ isLoading: true });
+        try {
+          const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+          await api.post('/user/auth/send-otp-phone', { phone: normalizedPhone });
+          set({ isLoading: false });
+          return { success: true, phone: normalizedPhone };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Verify OTP phone and complete login
+      verifyOtpPhone: async (phone, otp) => {
+        set({ isLoading: true });
+        try {
+          const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+          const response = await api.post('/user/auth/verify-otp-phone', { phone: normalizedPhone, otp });
+          const payload = response?.data ?? response;
+          const accessToken = payload?.accessToken;
+          const refreshToken = payload?.refreshToken;
+          const user = payload?.user;
+
+          if (!accessToken || !refreshToken || !user) {
+            throw new Error('Invalid OTP verification response from server.');
+          }
+
+          set({
+            user,
+            token: accessToken,
+            refreshToken,
+            isAuthenticated: true,
+            pendingEmail: null,
+            isLoading: false,
+          });
+
+          localStorage.setItem('token', accessToken);
+          localStorage.setItem('refresh-token', refreshToken);
+
+          // Register FCM token
+          registerFCMToken(true).catch((err) => console.log('FCM registration failed:', err));
+
+          return { success: true, user };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Verify OTP and complete login
       verifyOTP: async (email, otp) => {
         set({ isLoading: true });

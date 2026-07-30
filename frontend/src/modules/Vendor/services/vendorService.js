@@ -116,6 +116,15 @@ export const resubmitVendorProduct = (id) =>
 export const getVendorProductGst = (id) =>
     api.get(`/vendor/products/${id}/gst`);
 
+export const getVendorGstSettings = () =>
+    api.get('/vendor/gst-settings');
+
+export const updateVendorGstSettings = (data) =>
+    api.post('/vendor/gst-settings', data);
+
+export const getCategoryDefaultGst = (categoryId) =>
+    api.get(`/vendor/gst-settings/category/${categoryId}`);
+
 export const getEffectiveGstPreview = (categoryId, price, taxIncluded, productId = "") =>
     api.get('/products/gst/effective', {
         params: { productId, categoryId, price, taxIncluded }

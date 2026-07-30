@@ -171,6 +171,7 @@ const MobileProductDetail = () => {
   const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [highlightedMissingFields, setHighlightedMissingFields] = useState([]);
 
   const { items, addItem, removeItem } = useCartStore();
   const triggerCartAnimation = useUIStore(
@@ -330,10 +331,10 @@ const MobileProductDetail = () => {
   }
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product) return false;
     if (product.stock === "out_of_stock") {
       toast.error("Product is out of stock");
-      return;
+      return false;
     }
     const attributeAxes = Array.isArray(product?.variants?.attributes)
       ? product.variants.attributes.filter((attr) => Array.isArray(attr?.values) && attr.values.length > 0)
@@ -341,14 +342,47 @@ const MobileProductDetail = () => {
     const hasDynamicAxes = attributeAxes.length > 0;
     const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
     const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
-    const isMissingDynamicAxis = hasDynamicAxes
-      ? attributeAxes.some((attr) => !String(selectedVariant?.[attr.name] || selectedVariant?.[String(attr.name || "").toLowerCase().replace(/\s+/g, "_")] || "").trim())
-      : false;
+
+    const missingOptions = [];
     const selectedSize = String(selectedVariant?.size || "").trim();
     const selectedColor = String(selectedVariant?.color || "").trim();
-    if (isMissingDynamicAxis || ((hasSizeVariants && !selectedSize) || (hasColorVariants && !selectedColor))) {
-      toast.error("Please select required variant options");
-      return;
+
+    if (hasSizeVariants && !selectedSize) {
+      missingOptions.push("Size");
+    }
+    if (hasColorVariants && !selectedColor) {
+      missingOptions.push("Color");
+    }
+    if (hasDynamicAxes) {
+      attributeAxes.forEach((attr) => {
+        const val = String(
+          selectedVariant?.[attr.name] ||
+          selectedVariant?.[String(attr.name || "").toLowerCase().replace(/\s+/g, "_")] ||
+          ""
+        ).trim();
+        if (!val) {
+          missingOptions.push(attr.name);
+        }
+      });
+    }
+
+    if (missingOptions.length > 0) {
+      setHighlightedMissingFields(missingOptions);
+      setTimeout(() => {
+        setHighlightedMissingFields([]);
+      }, 1000);
+
+      toast.error(`Please select variant options: ${missingOptions.join(", ")}`, {
+        duration: 3000,
+        position: "top-center",
+        icon: "⚠️",
+      });
+
+      const selectorElement = document.querySelector("[data-variant-selector]");
+      if (selectorElement) {
+        selectorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return false;
     }
 
     const finalPrice = resolveVariantPrice(product, selectedVariant);
@@ -362,11 +396,11 @@ const MobileProductDetail = () => {
       : Number(product.stockQuantity || 0);
     if (effectiveStock <= 0) {
       toast.error("Selected variant is out of stock");
-      return;
+      return false;
     }
     if (quantity > effectiveStock) {
       toast.error(`Only ${effectiveStock} item(s) available for selected variant`);
-      return;
+      return false;
     }
 
     const addedToCart = addItem({
@@ -380,9 +414,10 @@ const MobileProductDetail = () => {
       vendorId: product.vendorId,
       vendorName: vendor?.storeName || vendor?.name || product.vendorName,
     });
-    if (!addedToCart) return;
+    if (!addedToCart) return false;
     triggerCartAnimation();
     toast.success("Added to cart!");
+    return true;
   };
 
   const handleRemoveFromCart = () => {
@@ -556,13 +591,10 @@ const MobileProductDetail = () => {
               <span className="font-medium">Back</span>
             </button>
           </div>
-
           <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-16 lg:px-8 lg:items-start">
             {/* Left Column: Product Image */}
             <div className="px-4 py-4 lg:p-0 sticky top-24">
-              <div className="bg-white rounded-3xl p-2 lg:p-4 shadow-sm border border-gray-100">
-                <ImageGallery images={productImages} productName={product.name} />
-              </div>
+              <ImageGallery images={productImages} productName={product.name} />
               {product.flashSale && (
                 <div className="mt-4 flex justify-center lg:justify-start">
                   <Badge variant="flash" size="lg">Flash Sale - Limited Time Offer</Badge>
@@ -700,11 +732,14 @@ const MobileProductDetail = () => {
                 {/* Variants & Quantity */}
                 <div className="space-y-6 border-b border-gray-100 pb-8">
                   {product.variants && (
-                    <VariantSelector
-                      variants={product.variants}
-                      onVariantChange={setSelectedVariant}
-                      currentPrice={product.price}
-                    />
+                    <div data-variant-selector>
+                      <VariantSelector
+                        variants={product.variants}
+                        onVariantChange={setSelectedVariant}
+                        currentPrice={product.price}
+                        highlightFields={highlightedMissingFields}
+                      />
+                    </div>
                   )}
 
                   <div>
@@ -745,16 +780,40 @@ const MobileProductDetail = () => {
                 </div>
 
                 {/* ACTION BUTTONS (MOBILE & DESKTOP INLINE) */}
-                <div className="flex flex-col gap-3 py-4">
+                <div className="flex flex-col sm:flex-row gap-3 py-4">
+                  {isInCart ? (
+                    <button
+                      onClick={handleRemoveFromCart}
+                      className="flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100/50">
+                      <FiTrash2 className="text-xl" />
+                      <span>Remove from Cart</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={product.stock === "out_of_stock"}
+                      className={`flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                        : "bg-white text-primary-600 border-2 border-primary-600 hover:bg-primary-50 hover:shadow-glow-primary-light"
+                        }`}>
+                      <FiShoppingBag className="text-xl" />
+                      <span>
+                        {product.stock === "out_of_stock"
+                          ? "Out of Stock"
+                          : "Add to Cart"}
+                      </span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       if (!isInCart) {
-                        handleAddToCart();
+                        const success = handleAddToCart();
+                        if (!success) return;
                       }
                       navigate("/checkout");
                     }}
                     disabled={product.stock === "out_of_stock"}
-                    className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"
+                    className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                       : "gradient-green text-white hover:shadow-glow-green"
                       }`}>

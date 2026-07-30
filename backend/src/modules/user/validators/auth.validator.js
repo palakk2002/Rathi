@@ -55,3 +55,21 @@ export const changePasswordSchema = Joi.object({
     currentPassword: Joi.string().required(),
     newPassword: Joi.string().min(6).required(),
 });
+
+export const sendOtpPhoneSchema = Joi.object({
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+        'string.pattern.base': 'Please enter a valid 10-digit phone number.',
+        'any.required': 'Phone number is required.'
+    }),
+});
+
+export const verifyOtpPhoneSchema = Joi.object({
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+        'string.pattern.base': 'Please enter a valid 10-digit phone number.',
+        'any.required': 'Phone number is required.'
+    }),
+    otp: Joi.string().length(6).required().messages({
+        'string.length': 'OTP must be exactly 6 digits.',
+        'any.required': 'OTP is required.'
+    }),
+});

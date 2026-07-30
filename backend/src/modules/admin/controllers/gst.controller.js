@@ -47,6 +47,10 @@ export const createGstRule = asyncHandler(async (req, res) => {
     const { name, rate, hsnCode, type, categoryId, productId, description, reason } = req.body;
     const adminId = req.user.id || req.user._id;
 
+    if (type === 'category' || type === 'product') {
+        throw new ApiError(403, 'Admin is not allowed to create category or product level GST rules.');
+    }
+
     // Check uniqueness constraint
     if (type === 'global') {
         const existingGlobal = await GstRule.findOne({ type: 'global', isActive: true });
@@ -100,6 +104,11 @@ export const updateGstRule = asyncHandler(async (req, res) => {
     if (!rule) {
         throw new ApiError(404, 'GST Rule not found.');
     }
+
+    if (rule.type === 'category' || rule.type === 'product') {
+        throw new ApiError(403, 'Admin is not allowed to update category or product level GST rules.');
+    }
+
 
     const oldValueSnapshot = rule.toObject();
 
@@ -167,6 +176,10 @@ export const toggleGstRule = asyncHandler(async (req, res) => {
         throw new ApiError(404, 'GST Rule not found.');
     }
 
+    if (rule.type === 'category' || rule.type === 'product') {
+        throw new ApiError(403, 'Admin is not allowed to modify category or product level GST rules.');
+    }
+
     const oldValueSnapshot = rule.toObject();
 
     if (!rule.isActive) {
@@ -214,6 +227,10 @@ export const deleteGstRule = asyncHandler(async (req, res) => {
     const rule = await GstRule.findById(req.params.id);
     if (!rule) {
         throw new ApiError(404, 'GST Rule not found.');
+    }
+
+    if (rule.type === 'category' || rule.type === 'product') {
+        throw new ApiError(403, 'Admin is not allowed to delete category or product level GST rules.');
     }
 
     const oldValueSnapshot = rule.toObject();

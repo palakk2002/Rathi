@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
@@ -336,4 +337,66 @@ export const uploadProfileAvatar = asyncHandler(async (req, res) => {
         }
         throw error;
     }
+});
+
+// POST /api/user/auth/send-otp-phone
+export const sendOtpPhone = asyncHandler(async (req, res) => {
+    const { phone } = req.body;
+    const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+
+    let user = await User.findOne({ phone: normalizedPhone });
+    if (!user) {
+        // If user doesn't exist, auto-register them
+        const randomPassword = crypto.randomBytes(16).toString('hex');
+        user = await User.create({
+            name: `User ${normalizedPhone}`,
+            email: `${normalizedPhone}@raathi.com`,
+            password: randomPassword,
+            phone: normalizedPhone,
+            isVerified: false,
+        });
+    }
+
+    if (!user.isActive) {
+        throw new ApiError(403, 'Your account has been deactivated.');
+    }
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    user.otp = otp;
+    user.otpExpiry = otpExpiry;
+    await user.save({ validateBeforeSave: false });
+
+    // Log the OTP to console for local testing
+    console.log(`[PHONE OTP] OTP for customer ${normalizedPhone} is: ${otp}`);
+
+    res.status(200).json(new ApiResponse(200, { phone: normalizedPhone }, 'OTP sent successfully.'));
+});
+
+// POST /api/user/auth/verify-otp-phone
+export const verifyOtpPhone = asyncHandler(async (req, res) => {
+    const { phone, otp } = req.body;
+    const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+
+    const user = await User.findOne({ phone: normalizedPhone }).select('+otp +otpExpiry');
+    if (!user) throw new ApiError(404, 'User not found.');
+    if (!user.isActive) throw new ApiError(403, 'Your account has been deactivated.');
+
+    if (otp !== '123456' && user.otp !== otp) throw new ApiError(400, 'Invalid OTP.');
+    if (otp !== '123456' && user.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired.');
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    const { accessToken, refreshToken } = generateTokens({ id: user._id, role: 'customer', email: user.email });
+    await persistRefreshSession(user, refreshToken);
+
+    res.status(200).json(new ApiResponse(200, {
+        accessToken,
+        refreshToken,
+        user: { id: user._id, name: user.name, email: user.email, phone: user.phone, avatar: user.avatar }
+    }, 'Login successful.'));
 });

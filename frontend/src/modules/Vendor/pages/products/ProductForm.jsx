@@ -6,7 +6,7 @@ import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { uploadVendorImage, uploadVendorImages, getEffectiveGstPreview } from "../../services/vendorService";
+import { uploadVendorImage, uploadVendorImages, getEffectiveGstPreview, getCategoryDefaultGst } from "../../services/vendorService";
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import toast from "react-hot-toast";
@@ -114,6 +114,7 @@ const ProductForm = () => {
     returnable: true,
     cancelable: true,
     taxIncluded: false,
+    taxRate: 18,
     description: "",
     tags: [],
     variants: {
@@ -132,6 +133,22 @@ const ProductForm = () => {
     relatedProducts: [],
     faqs: [],
   });
+
+  // Auto-fill Category default GST rate when categoryId changes (for new products)
+  useEffect(() => {
+    if (formData.categoryId && !isEdit) {
+      getCategoryDefaultGst(formData.categoryId)
+        .then((res) => {
+          if (res?.data && typeof res.data.rate === 'number') {
+            setFormData((prev) => ({
+              ...prev,
+              taxRate: res.data.rate,
+            }));
+          }
+        })
+        .catch((err) => console.error("Error fetching category default GST:", err));
+    }
+  }, [formData.categoryId, isEdit]);
 
   const [gstPreview, setGstPreview] = useState(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
@@ -162,6 +179,34 @@ const ProductForm = () => {
     };
     fetchGst();
   }, [formData.categoryId, formData.price, formData.taxIncluded, isEdit, id]);
+
+  const gstCalculations = useMemo(() => {
+    const priceVal = parseFloat(formData.price) || 0;
+    const rateVal = parseFloat(formData.taxRate) || 0;
+    const taxIncluded = formData.taxIncluded || false;
+
+    let basePrice = priceVal;
+    let gstAmount = 0;
+    let totalPrice = priceVal;
+
+    if (taxIncluded) {
+      basePrice = priceVal / (1 + rateVal / 100);
+      gstAmount = priceVal - basePrice;
+      totalPrice = priceVal;
+    } else {
+      basePrice = priceVal;
+      gstAmount = priceVal * (rateVal / 100);
+      totalPrice = priceVal + gstAmount;
+    }
+
+    return {
+      basePrice: parseFloat(basePrice.toFixed(2)),
+      gstAmount: parseFloat(gstAmount.toFixed(2)),
+      totalPrice: parseFloat(totalPrice.toFixed(2)),
+      rate: rateVal
+    };
+  }, [formData.price, formData.taxRate, formData.taxIncluded]);
+
   const variantCombinations = useMemo(
     () =>
       buildVariantCombinations(
@@ -265,6 +310,7 @@ const ProductForm = () => {
       averageRating: product.averageRating || 0,
       negativeReviewPercentage: product.negativeReviewPercentage || 0,
       reviewHealth: product.reviewHealth || "Average",
+      taxRate: product.taxRate !== undefined ? product.taxRate : 18,
     });
   };
 
@@ -539,8 +585,15 @@ const ProductForm = () => {
       ? parseInt(formData.minimumOrderQuantity, 10)
       : null;
 
+    const parsedTaxRate = parseFloat(formData.taxRate);
+
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedStockQuantity)) {
       toast.error("Please enter valid numeric values");
+      return;
+    }
+
+    if (isNaN(parsedTaxRate) || parsedTaxRate < 0 || parsedTaxRate > 100) {
+      toast.error("GST percentage must be a valid number between 0% and 100%");
       return;
     }
 
@@ -564,6 +617,7 @@ const ProductForm = () => {
       categoryId: finalCategoryId,
       subcategoryId: formData.subcategoryId ? formData.subcategoryId : null,
       brandId: formData.brandId ?? null,
+      taxRate: parsedTaxRate,
       faqs: (formData.faqs || [])
         .map((faq) => ({
           question: String(faq?.question || "").trim(),
@@ -727,8 +781,8 @@ const ProductForm = () => {
 
         {/* Pricing */}
         <div>
-          <h2 className="text-base font-bold text-gray-800 mb-2">Pricing</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <h2 className="text-base font-bold text-gray-800 mb-2">Pricing & Tax</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Price <span className="text-red-500">*</span>
@@ -761,35 +815,53 @@ const ProductForm = () => {
                 placeholder="0.00"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                GST Rate (%) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="taxRate"
+                value={formData.taxRate !== undefined ? formData.taxRate : 18}
+                onChange={handleChange}
+                required
+                min="0"
+                max="100"
+                step="any"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                placeholder="18"
+              />
+            </div>
           </div>
-          {gstPreview && gstPreview.effective && gstPreview.calculations && (
+          {formData.price && (
             <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                <FiInfo className="text-sm" /> Applied GST Configuration (Read-only)
+                <FiInfo className="text-sm" /> Live GST Calculations Preview
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500 text-xs block font-semibold">GST Rate</span>
-                  <span className="font-extrabold text-gray-900">{gstPreview.effective.rate}%</span>
-                  <span className="text-[10px] text-primary-600 block capitalize">Source: {gstPreview.effective.ruleType}</span>
+                  <span className="font-extrabold text-gray-900">{gstCalculations.rate}%</span>
+                  <span className="text-[10px] text-primary-600 block capitalize">Source: Seller Configuration</span>
                 </div>
-                {gstPreview.effective.hsnCode && (
+                {formData.hsnCode && (
                   <div>
                     <span className="text-gray-500 text-xs block font-semibold">HSN/SAC Code</span>
-                    <span className="font-mono font-bold text-gray-800">{gstPreview.effective.hsnCode}</span>
+                    <span className="font-mono font-bold text-gray-800">{formData.hsnCode}</span>
                   </div>
                 )}
                 <div>
                   <span className="text-gray-500 text-xs block font-semibold">Base Price</span>
-                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.basePrice || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-800">Rs. {gstCalculations.basePrice.toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs block font-semibold">GST Amount</span>
-                  <span className="font-semibold text-gray-800">Rs. {parseFloat(gstPreview.calculations.gstAmount || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-800">Rs. {gstCalculations.gstAmount.toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs block font-semibold text-primary-700">Final Price</span>
-                  <span className="font-black text-primary-700">Rs. {parseFloat(gstPreview.calculations.totalPrice || 0).toFixed(2)}</span>
+                  <span className="font-black text-primary-700">Rs. {gstCalculations.totalPrice.toFixed(2)}</span>
                 </div>
               </div>
             </div>

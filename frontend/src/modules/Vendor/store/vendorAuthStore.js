@@ -19,13 +19,26 @@ export const useVendorAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
 
+      // Send login OTP action
+      sendLoginOtp: async (email) => {
+        set({ isLoading: true });
+        try {
+          const response = await api.post("/vendor/auth/send-login-otp", { email });
+          set({ isLoading: false });
+          return response?.data || response;
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Vendor login action
-      login: async (email, password, rememberMe = false) => {
+      login: async (email, otp, rememberMe = false) => {
         set({ isLoading: true });
         try {
           const response = await api.post("/vendor/auth/login", {
             email,
-            password,
+            otp,
           });
           const authData = response?.data || {};
           const vendor = authData.vendor;

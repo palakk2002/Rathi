@@ -181,6 +181,12 @@ export const updateCommissionRate = (id, commissionRate) =>
 export const getVendorCommissions = (id, params = {}) =>
     api.get(`/admin/vendors/${id}/commissions`, { params });
 
+export const updateVendorVerificationDetails = (id, formData) =>
+    api.put(`/admin/vendors/${id}/verification-details`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+
 // ─── Customers ────────────────────────────────────────────────────────────────
 export const getAllCustomers = (params = {}) =>
     api.get('/admin/customers', { params });

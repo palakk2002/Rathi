@@ -3,7 +3,6 @@ import Joi from 'joi';
 export const registerSchema = Joi.object({
     name: Joi.string().trim().min(2).max(50).required(),
     email: Joi.string().email().lowercase().required(),
-    password: Joi.string().min(6).required(),
     phone: Joi.string().trim().required(),
     storeName: Joi.string().trim().min(2).max(100).required(),
     storeDescription: Joi.string().trim().max(500).allow('').optional(),
@@ -31,12 +30,16 @@ export const registerSchema = Joi.object({
 
 export const loginSchema = Joi.object({
     email: Joi.string().email().required(),
-    password: Joi.string().required(),
+    otp: Joi.string().trim().pattern(/^\d{6}$/).required(),
+});
+
+export const sendLoginOtpSchema = Joi.object({
+    email: Joi.string().email().lowercase().required(),
 });
 
 export const verifyOtpSchema = Joi.object({
     email: Joi.string().email().lowercase().required(),
-    otp: Joi.string().pattern(/^\d{6}$/).required(),
+    otp: Joi.string().trim().pattern(/^\d{6}$/).required(),
 });
 
 export const resendOtpSchema = Joi.object({

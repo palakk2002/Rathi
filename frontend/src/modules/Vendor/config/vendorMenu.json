@@ -114,7 +114,8 @@
         "children":  [
                          "Store Settings",
                          "Payment Settings",
-                         "Shipping Settings"
+                         "Shipping Settings",
+                         "GST Settings"
                      ]
     },
     {

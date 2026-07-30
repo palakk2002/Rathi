@@ -50,6 +50,9 @@ export const getAllOrders = asyncHandler(async (req, res) => {
     if (String(req.query.onlyUnassigned || '') === 'true') {
         filter.deliveryBoyId = null;
     }
+    if (req.query.gst) {
+        filter['items.gstSnapshot.rate'] = Number(req.query.gst);
+    }
 
     const [orders, total] = await Promise.all([
         Order.find(filter)

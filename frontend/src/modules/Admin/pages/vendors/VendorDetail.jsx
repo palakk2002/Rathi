@@ -15,6 +15,7 @@ import {
   FiTrendingUp,
   FiUser,
   FiFileText,
+  FiShield,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorStore } from "../../store/vendorStore";
@@ -28,7 +29,7 @@ import toast from "react-hot-toast";
 const VendorDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getVendor, updateVendorStatus, updateCommissionRate } =
+  const { getVendor, updateVendorStatus, updateCommissionRate, updateVendorVerification } =
     useVendorStore();
 
   const [vendor, setVendor] = useState(null);
@@ -38,6 +39,86 @@ const VendorDetail = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditingCommission, setIsEditingCommission] = useState(false);
   const [commissionRate, setCommissionRate] = useState("");
+  
+  const [isEditingVerification, setIsEditingVerification] = useState(false);
+  const [verificationForm, setVerificationForm] = useState({
+    businessType: "non-gst",
+    legalBusinessName: "",
+    gstin: "",
+    panNumber: "",
+    street: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "India",
+  });
+  const [gstFile, setGstFile] = useState(null);
+  const [panFile, setPanFile] = useState(null);
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+
+  const openEditVerification = () => {
+    setVerificationForm({
+      businessType: vendor.businessType || "non-gst",
+      legalBusinessName: vendor.legalBusinessName || "",
+      gstin: vendor.gstin || "",
+      panNumber: vendor.panNumber || "",
+      street: vendor.businessAddress?.street || "",
+      city: vendor.businessAddress?.city || "",
+      state: vendor.businessAddress?.state || "",
+      zipCode: vendor.businessAddress?.zipCode || "",
+      country: vendor.businessAddress?.country || "India",
+    });
+    setGstFile(null);
+    setPanFile(null);
+    setIsEditingVerification(true);
+  };
+
+  const handleVerificationSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmittingVerification(true);
+    try {
+      const formData = new FormData();
+      formData.append("businessType", verificationForm.businessType);
+      formData.append("panNumber", verificationForm.panNumber);
+      
+      if (verificationForm.businessType === "gst") {
+        formData.append("legalBusinessName", verificationForm.legalBusinessName);
+        formData.append("gstin", verificationForm.gstin);
+        formData.append("businessAddress", JSON.stringify({
+          street: verificationForm.street,
+          city: verificationForm.city,
+          state: verificationForm.state,
+          zipCode: verificationForm.zipCode,
+          country: verificationForm.country,
+        }));
+      }
+
+      if (gstFile) {
+        formData.append("gstCertificate", gstFile);
+      }
+      if (panFile) {
+        formData.append("panCardDocument", panFile);
+      }
+
+      const success = await updateVendorVerification(vendor.id, formData);
+      if (success) {
+        toast.success("Verification details updated successfully");
+        setIsEditingVerification(false);
+        const data = await getVendor(id);
+        if (data) {
+          setVendor(data);
+          setCommissionRate(((data.commissionRate || 0) * 100).toFixed(1));
+        }
+      } else {
+        toast.error("Failed to update verification details");
+      }
+    } catch (err) {
+      toast.error(err.message || "Something went wrong");
+    } finally {
+      setIsSubmittingVerification(false);
+    }
+  };
+
   const isSameVendorId = (a, b) => String(a) === String(b);
 
   useEffect(() => {
@@ -476,9 +557,18 @@ const VendorDetail = () => {
 
                 {/* Business Verification Details */}
                 <div>
-                  <h2 className="text-lg font-bold text-gray-800 mb-4">
-                    Business Verification Details
-                  </h2>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold text-gray-800">
+                      Business Verification Details
+                    </h2>
+                    <button
+                      onClick={openEditVerification}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                    >
+                      <FiEdit className="text-xs" />
+                      Edit Details
+                    </button>
+                  </div>
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <FiFileText className="text-gray-400 mt-1" />
@@ -803,11 +893,20 @@ const VendorDetail = () => {
           <div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
               <h3 className="font-bold text-gray-800">{previewDoc.name}</h3>
-              <button
-                onClick={() => setPreviewDoc(null)}
-                className="text-gray-500 hover:text-gray-800 font-bold px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
-                Close
-              </button>
+              <div className="flex gap-2">
+                <a
+                  href={previewDoc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center">
+                  Open in New Tab
+                </a>
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="text-gray-500 hover:text-gray-800 font-bold px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                  Close
+                </button>
+              </div>
             </div>
             <div className="flex-1 bg-gray-100 p-4">
               {previewDoc.url.toLowerCase().endsWith('.pdf') ? (
@@ -878,6 +977,181 @@ const VendorDetail = () => {
                 Confirm
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Verification Details Modal */}
+      {isEditingVerification && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl p-6 my-8 max-h-[90vh] flex flex-col">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3 flex items-center gap-2">
+              <FiShield className="text-primary-600" />
+              Edit Business Verification Details
+            </h3>
+            
+            <form onSubmit={handleVerificationSubmit} className="flex-1 overflow-y-auto pr-1 space-y-4 text-left">
+              {/* Business Type selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Business Verification Type <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="businessType"
+                      value="non-gst"
+                      checked={verificationForm.businessType === 'non-gst'}
+                      onChange={(e) => setVerificationForm({ ...verificationForm, businessType: e.target.value })}
+                      className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                    />
+                    Non-GST Registered
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="businessType"
+                      value="gst"
+                      checked={verificationForm.businessType === 'gst'}
+                      onChange={(e) => setVerificationForm({ ...verificationForm, businessType: e.target.value })}
+                      className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                    />
+                    GST Registered
+                  </label>
+                </div>
+              </div>
+
+              {/* GST Details */}
+              {verificationForm.businessType === 'gst' && (
+                <div className="space-y-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
+                  <h4 className="font-semibold text-gray-800 text-sm">GST Certification Details</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Legal Business Name *</label>
+                      <input
+                        type="text"
+                        value={verificationForm.legalBusinessName}
+                        onChange={(e) => setVerificationForm({ ...verificationForm, legalBusinessName: e.target.value })}
+                        placeholder="Legal Business Name"
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-800"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">GSTIN *</label>
+                      <input
+                        type="text"
+                        value={verificationForm.gstin}
+                        onChange={(e) => setVerificationForm({ ...verificationForm, gstin: e.target.value })}
+                        placeholder="GSTIN"
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-800"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      GST Certificate File {vendor.gstCertificate && "(Keep empty to keep current)"}
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => setGstFile(e.target.files?.[0] || null)}
+                      accept=".pdf,image/*"
+                      className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+
+                  <div className="border-t border-gray-200/60 pt-3 space-y-3">
+                    <h5 className="font-semibold text-gray-800 text-xs">GST Registered Address</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-gray-700 mb-1">Street Address</label>
+                        <input
+                          type="text"
+                          value={verificationForm.street}
+                          onChange={(e) => setVerificationForm({ ...verificationForm, street: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-705 mb-1">City</label>
+                        <input
+                          type="text"
+                          value={verificationForm.city}
+                          onChange={(e) => setVerificationForm({ ...verificationForm, city: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-705 mb-1">State</label>
+                        <input
+                          type="text"
+                          value={verificationForm.state}
+                          onChange={(e) => setVerificationForm({ ...verificationForm, state: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-705 mb-1">Zip Code</label>
+                        <input
+                          type="text"
+                          value={verificationForm.zipCode}
+                          onChange={(e) => setVerificationForm({ ...verificationForm, zipCode: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PAN Details */}
+              <div className="space-y-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
+                <h4 className="font-semibold text-gray-800 text-sm">PAN Card Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">PAN Number *</label>
+                    <input
+                      type="text"
+                      value={verificationForm.panNumber}
+                      onChange={(e) => setVerificationForm({ ...verificationForm, panNumber: e.target.value })}
+                      placeholder="PAN Number"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-800"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      PAN Card Document {vendor.panCardDocument && "(Keep empty to keep current)"}
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => setPanFile(e.target.files?.[0] || null)}
+                      accept=".pdf,image/*"
+                      className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-105">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingVerification(false)}
+                  disabled={isSubmittingVerification}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-semibold disabled:opacity-50">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingVerification}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors text-sm font-semibold disabled:opacity-50">
+                  {isSubmittingVerification ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
