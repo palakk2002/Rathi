@@ -14,7 +14,7 @@ const decodeJwtPayload = (token) => {
 };
 
 const VendorProtectedRoute = ({ children }) => {
-  const { isAuthenticated, token } = useVendorAuthStore();
+  const { isAuthenticated, token, vendor } = useVendorAuthStore();
   const location = useLocation();
   const accessToken = token || localStorage.getItem('vendor-token');
   const payload = decodeJwtPayload(accessToken);
@@ -39,6 +39,13 @@ const VendorProtectedRoute = ({ children }) => {
     localStorage.removeItem('vendor-refresh-token');
     localStorage.removeItem('vendor-auth-storage');
     return <Navigate to="/vendor/login" state={{ from: location }} replace />;
+  }
+
+  if (vendor && vendor.status !== 'approved') {
+    const isDashboard = location.pathname === '/vendor/dashboard' || location.pathname === '/vendor' || location.pathname === '/vendor/';
+    if (!isDashboard) {
+      return <Navigate to="/vendor/dashboard" replace />;
+    }
   }
 
   return children;

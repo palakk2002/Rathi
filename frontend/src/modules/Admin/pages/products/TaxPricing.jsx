@@ -445,14 +445,8 @@ const TaxPricing = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-xl font-bold text-gray-800">Category-wise GST Rules</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">Define custom tax rates per category level.</p>
+                    <p className="text-sm text-gray-500 mt-0.5">View custom tax rates per category level (configured by sellers).</p>
                   </div>
-                  <button
-                    onClick={() => openAddGstModal("category")}
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
-                  >
-                    <FiPlus /> Add Category GST
-                  </button>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -464,7 +458,6 @@ const TaxPricing = () => {
                         <th className="py-3 px-4">GST Rate</th>
                         <th className="py-3 px-4">HSN Code</th>
                         <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-sm">
@@ -477,38 +470,15 @@ const TaxPricing = () => {
                           <td className="py-4 px-4 font-black text-gray-900">{rule.rate}%</td>
                           <td className="py-4 px-4 font-mono text-gray-500">{rule.hsnCode || "—"}</td>
                           <td className="py-4 px-4">
-                            <button
-                              onClick={() => handleToggleGst(rule)}
-                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                rule.isActive ? "bg-green-600" : "bg-gray-200"
-                              }`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                  rule.isActive ? "translate-x-5" : "translate-x-0"
-                                }`}
-                              />
-                            </button>
-                          </td>
-                          <td className="py-4 px-4 text-right space-x-2">
-                            <button
-                              onClick={() => openEditGstModal(rule)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg inline-block"
-                            >
-                              <FiEdit />
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(rule._id, "gst")}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg inline-block"
-                            >
-                              <FiTrash2 />
-                            </button>
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${rule.isActive ? 'bg-green-100 text-green-850' : 'bg-gray-100 text-gray-600'}`}>
+                              {rule.isActive ? 'ACTIVE' : 'INACTIVE'}
+                            </span>
                           </td>
                         </tr>
                       ))}
                       {categoryRules.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="text-center py-8 text-gray-400">
+                          <td colSpan={5} className="text-center py-8 text-gray-400">
                             No Category rules configured yet.
                           </td>
                         </tr>
@@ -524,14 +494,8 @@ const TaxPricing = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-xl font-bold text-gray-800">Product Specific GST Overrides</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">Maximum priority GST rates applied directly to unique products.</p>
+                    <p className="text-sm text-gray-500 mt-0.5">Maximum priority GST rates applied directly to unique products (configured by sellers).</p>
                   </div>
-                  <button
-                    onClick={() => openAddGstModal("product")}
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
-                  >
-                    <FiPlus /> Add Product Override
-                  </button>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -543,7 +507,6 @@ const TaxPricing = () => {
                         <th className="py-3 px-4">GST Rate</th>
                         <th className="py-3 px-4">HSN Code</th>
                         <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-sm">
@@ -556,38 +519,15 @@ const TaxPricing = () => {
                           <td className="py-4 px-4 font-black text-gray-900">{rule.rate}%</td>
                           <td className="py-4 px-4 font-mono text-gray-500">{rule.hsnCode || "—"}</td>
                           <td className="py-4 px-4">
-                            <button
-                              onClick={() => handleToggleGst(rule)}
-                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                rule.isActive ? "bg-green-600" : "bg-gray-200"
-                              }`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                  rule.isActive ? "translate-x-5" : "translate-x-0"
-                                }`}
-                              />
-                            </button>
-                          </td>
-                          <td className="py-4 px-4 text-right space-x-2">
-                            <button
-                              onClick={() => openEditGstModal(rule)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg inline-block"
-                            >
-                              <FiEdit />
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(rule._id, "gst")}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg inline-block"
-                            >
-                              <FiTrash2 />
-                            </button>
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${rule.isActive ? 'bg-green-100 text-green-850' : 'bg-gray-100 text-gray-600'}`}>
+                              {rule.isActive ? 'ACTIVE' : 'INACTIVE'}
+                            </span>
                           </td>
                         </tr>
                       ))}
                       {productRules.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="text-center py-8 text-gray-400">
+                          <td colSpan={5} className="text-center py-8 text-gray-400">
                             No Product GST overrides configured.
                           </td>
                         </tr>

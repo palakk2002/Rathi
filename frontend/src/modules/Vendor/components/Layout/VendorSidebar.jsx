@@ -25,6 +25,7 @@ import {
   FiMessageSquare,
   FiTrendingUp,
   FiFile,
+  FiLock,
 } from "react-icons/fi";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import vendorMenu from "../../config/vendorMenu.json";
@@ -75,6 +76,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Store Settings": "/vendor/settings/store",
       "Payment Settings": "/vendor/settings/payment",
       "Shipping Settings": "/vendor/settings/shipping",
+      "GST Settings": "/vendor/settings/gst",
     },
     "/vendor/payment-settlements": {
       "Bank Details": "/vendor/payment-settlements/bank-details",
@@ -180,6 +182,8 @@ const VendorSidebar = ({ isOpen, onClose }) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems[item.title];
     const active = isActive(item.route);
+    const isApproved = vendor?.status === 'approved';
+    const isLocked = !isApproved && item.route !== '/vendor/dashboard';
 
     return (
       <div key={item.route} className="mb-1">
@@ -188,25 +192,36 @@ const VendorSidebar = ({ isOpen, onClose }) => {
           className={`
             flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer
             ${
-              active
-                ? "bg-primary-600 text-white shadow-sm"
-                : "text-gray-300 hover:bg-slate-700"
+              isLocked
+                ? "opacity-50 text-gray-500 cursor-not-allowed hover:bg-transparent"
+                : active
+                  ? "bg-primary-600 text-white shadow-sm"
+                  : "text-gray-300 hover:bg-slate-700"
             }
           `}
           onClick={() => {
+            if (isLocked) {
+              import("react-hot-toast").then((m) => m.default.error("Account pending admin approval. Access restricted."));
+              return;
+            }
             if (hasChildren) {
               toggleExpand(item.title, true);
             } else {
               handleMenuItemClick(item.route);
             }
           }}>
-          <Icon
-            className={`text-xl flex-shrink-0 ${
-              active ? "text-white" : "text-gray-400"
-            }`}
-          />
+          {isLocked ? (
+            <FiLock className="text-xl flex-shrink-0 text-gray-500" />
+          ) : (
+            <Icon
+              className={`text-xl flex-shrink-0 ${
+                active ? "text-white" : "text-gray-400"
+              }`}
+            />
+          )}
           <span className="font-medium flex-1 text-sm">{item.title}</span>
-          {hasChildren && (
+          {isLocked && <FiLock className="text-gray-500 text-xs" />}
+          {!isLocked && hasChildren && (
             <motion.div
               animate={{ rotate: isExpanded ? 180 : 0 }}
               transition={{ duration: 0.2 }}>

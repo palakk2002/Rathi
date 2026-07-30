@@ -244,7 +244,7 @@ const sanitizeBrandPayload = (payload = {}) => {
 
 // GET /api/admin/products
 export const getAllProducts = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, search, vendorId, categoryId, status, includeInactive = 'false' } = req.query;
+    const { page = 1, limit = 20, search, vendorId, categoryId, status, includeInactive = 'false', gst } = req.query;
     const numericPage = Number(page) || 1;
     const numericLimit = Number(limit) || 20;
     const skip = (numericPage - 1) * numericLimit;
@@ -253,6 +253,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     if (vendorId) filter.vendorId = vendorId;
     if (categoryId) filter.categoryId = categoryId;
     if (status) filter.stock = status;
+    if (gst) filter.taxRate = Number(gst);
     if (String(includeInactive) !== 'true') {
         filter.isActive = { $ne: false };
     }

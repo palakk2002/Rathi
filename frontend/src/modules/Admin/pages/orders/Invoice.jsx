@@ -284,13 +284,19 @@ ${order.trackingNumber ? `Tracking Number: ${order.trackingNumber}` : ""}
                   HSN
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
+                  GST %
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">
+                  GST Amount
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
                   Quantity
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">
                   Unit Price
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">
-                  Total
+                  Subtotal
                 </th>
               </tr>
             </thead>
@@ -301,14 +307,15 @@ ${order.trackingNumber ? `Tracking Number: ${order.trackingNumber}` : ""}
                   <tr key={item.id || index} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-800">
                       <div>{item.name || `Item ${index + 1}`}</div>
-                      {item.gstSnapshot && (
-                        <div className="text-[10px] text-gray-400 font-mono mt-0.5">
-                          GST Rate: {item.gstSnapshot.rate}% ({item.gstSnapshot.ruleType})
-                        </div>
-                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 text-center font-mono">
                       {item.gstSnapshot?.hsnCode || item.hsnCode || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700 text-center">
+                      {item.gstSnapshot?.rate !== undefined ? `${item.gstSnapshot.rate}%` : "18%"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700 text-right">
+                      {formatPrice(item.gstSnapshot?.amount || 0)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 text-center">
                       {item.quantity || 1}

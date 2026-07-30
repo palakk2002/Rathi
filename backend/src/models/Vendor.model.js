@@ -5,7 +5,7 @@ const vendorSchema = new mongoose.Schema(
     {
         name: { type: String, required: true, trim: true },
         email: { type: String, required: true, unique: true, lowercase: true, index: true },
-        password: { type: String, required: true, select: false },
+        password: { type: String, select: false },
         phone: { type: String },
         storeName: { type: String, required: true },
         storeLogo: { type: String },
@@ -119,7 +119,7 @@ const vendorSchema = new mongoose.Schema(
 );
 
 vendorSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
+    if (!this.password || !this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 12);
     next();
 });

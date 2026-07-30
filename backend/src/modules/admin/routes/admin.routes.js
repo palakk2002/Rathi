@@ -21,7 +21,7 @@ import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
-import { uploadSingle } from '../../../middlewares/upload.js';
+import { uploadSingle, uploadVendorRegistrationDocuments } from '../../../middlewares/upload.js';
 import { refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
 import {
     createProductSchema,
@@ -147,6 +147,8 @@ router.get('/vendors/:id', ...adminAuth, validate(vendorIdParamSchema, 'params')
 router.get('/vendors/:id/commissions', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorCommissionsQuerySchema, 'query'), vendorController.getVendorCommissions);
 router.patch('/vendors/:id/status', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorStatusUpdateSchema), vendorController.updateVendorStatus);
 router.patch('/vendors/:id/commission', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorCommissionUpdateSchema), vendorController.updateCommissionRate);
+router.put('/vendors/:id/verification-details', ...adminAuth, validate(vendorIdParamSchema, 'params'), uploadVendorRegistrationDocuments(), vendorController.updateVendorVerificationDetails);
+
 
 // ─── Payouts & Settlements ───────────────────────────────────────────────────
 router.get('/payouts/vendors', ...adminAuth, payoutController.getVendorsPayoutList);

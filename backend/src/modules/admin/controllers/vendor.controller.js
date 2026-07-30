@@ -194,3 +194,86 @@ export const getVendorCommissions = asyncHandler(async (req, res) => {
         )
     );
 });
+
+// PUT /api/admin/vendors/:id/verification-details
+export const updateVendorVerificationDetails = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const vendor = await Vendor.findById(id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    const { businessType, legalBusinessName, gstin, panNumber, businessAddress } = req.body;
+    let parsedAddress = {};
+    if (businessAddress) {
+        try {
+            parsedAddress = typeof businessAddress === 'string' ? JSON.parse(businessAddress) : businessAddress;
+        } catch (_) {}
+    }
+
+    const { uploadLocalFileToCloudinaryAndCleanup } = await import('../../../services/upload.service.js');
+    const uploadPromises = [];
+    let gstIndex = -1;
+    let panIndex = -1;
+
+    const gstCertFile = req.files?.gstCertificate?.[0];
+    const panCardFile = req.files?.panCardDocument?.[0];
+
+    if (gstCertFile) {
+        gstIndex = uploadPromises.length;
+        uploadPromises.push(uploadLocalFileToCloudinaryAndCleanup(gstCertFile.path, 'vendors/documents'));
+    }
+    if (panCardFile) {
+        panIndex = uploadPromises.length;
+        uploadPromises.push(uploadLocalFileToCloudinaryAndCleanup(panCardFile.path, 'vendors/documents'));
+    }
+
+    const uploadResults = await Promise.all(uploadPromises);
+
+    const updates = {
+        businessType: businessType || vendor.businessType || 'non-gst',
+        panNumber: panNumber || vendor.panNumber,
+    };
+
+    if (updates.businessType === 'gst') {
+        updates.legalBusinessName = legalBusinessName || vendor.legalBusinessName;
+        updates.gstin = gstin || vendor.gstin;
+        updates.businessAddress = {
+            ...vendor.businessAddress,
+            ...parsedAddress
+        };
+    }
+
+    if (gstIndex !== -1) {
+        updates.gstCertificate = uploadResults[gstIndex].url;
+    }
+    if (panIndex !== -1) {
+        updates.panCardDocument = uploadResults[panIndex].url;
+    }
+
+    // Set status to pending on verification update
+    updates.status = 'pending';
+    updates.$push = {
+        verificationTimeline: {
+            status: 'pending',
+            remarks: `Business verification details modified by Administrator. Re-verification required.`,
+            updatedByName: req.user.name || 'Admin',
+            updatedAt: new Date()
+        },
+        verificationAuditLog: {
+            action: 'admin_verification_edit',
+            details: `Administrator updated verification details on behalf of vendor.`,
+            performedBy: {
+                id: req.user.id,
+                name: req.user.name || 'Admin',
+                role: 'admin'
+            },
+            timestamp: new Date()
+        }
+    };
+
+    const updatedVendor = await Vendor.findByIdAndUpdate(id, updates, { new: true, runValidators: true })
+        .select('-password -otp -otpExpiry')
+        .populate('categories', 'name slug');
+
+    res.status(200).json(new ApiResponse(200, toApiVendor(updatedVendor), 'Vendor verification details updated successfully.'));
+});
+

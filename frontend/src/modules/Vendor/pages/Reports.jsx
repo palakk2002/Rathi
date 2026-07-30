@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { FiFileText, FiTrendingUp, FiPackage, FiUsers } from 'react-icons/fi';
+import { FiFileText, FiTrendingUp, FiPackage, FiUsers, FiPercent } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import SalesReport from './reports/SalesReport';
 import ProductPerformanceReport from './reports/ProductPerformanceReport';
 import CustomerInsightsReport from './reports/CustomerInsightsReport';
+import GstReport from './reports/GstReport';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('sales');
@@ -11,6 +12,7 @@ const Reports = () => {
   const tabs = [
     { id: 'sales', label: 'Sales Report', icon: FiTrendingUp },
     { id: 'products', label: 'Product Performance', icon: FiPackage },
+    { id: 'gst', label: 'GST Report', icon: FiPercent },
     { id: 'customers', label: 'Customer Insights', icon: FiUsers },
   ];
 
@@ -51,6 +53,7 @@ const Reports = () => {
         <div className="p-4 sm:p-6">
           {activeTab === 'sales' && <SalesReport />}
           {activeTab === 'products' && <ProductPerformanceReport />}
+          {activeTab === 'gst' && <GstReport />}
           {activeTab === 'customers' && <CustomerInsightsReport />}
         </div>
       </div>

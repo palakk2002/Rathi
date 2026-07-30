@@ -19,8 +19,6 @@ const VendorRegister = () => {
     name: '',
     email: '',
     phone: '',
-    password: '',
-    confirmPassword: '',
     storeName: '',
     storeDescription: '',
     address: {
@@ -65,8 +63,7 @@ const VendorRegister = () => {
       categories: updated
     });
   };
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -109,7 +106,7 @@ const VendorRegister = () => {
     e.preventDefault();
 
     // Validation
-    if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.storeName) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.storeName) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -156,21 +153,10 @@ const VendorRegister = () => {
       }
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
     try {
       const fd = new FormData();
       fd.append('name', formData.name.trim());
       fd.append('email', formData.email.trim().toLowerCase());
-      fd.append('password', formData.password);
       fd.append('phone', formData.phone.trim());
       fd.append('storeName', formData.storeName.trim());
       fd.append('storeDescription', formData.storeDescription.trim());
@@ -645,61 +631,7 @@ const VendorRegister = () => {
             </div>
           </div>
 
-          {/* Password */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Account Security</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Minimum 6 characters"
-                    className="w-full pl-12 pr-12 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Confirm Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Re-enter password"
-                    className="w-full pl-12 pr-12 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 placeholder:text-gray-400"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Info Message */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">

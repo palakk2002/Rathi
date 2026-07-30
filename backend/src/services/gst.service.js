@@ -11,19 +11,23 @@ const roundToTwo = (num) => parseFloat((Math.round(num * 100) / 100).toFixed(2))
  * Product override -> Category GST -> Global GST -> Fallback 18%
  */
 export const getEffectiveGstRate = async (productId, categoryId) => {
-    let resolvedRule = null;
-
-    // 1. Product level override
+    // 1. Check Product collection directly (Seller product GST source of truth)
     if (productId) {
-        resolvedRule = await GstRule.findOne({
-            type: 'product',
-            productId,
-            isActive: true
-        }).lean();
+        const product = await Product.findById(productId).select('taxRate hsnCode').lean();
+        if (product && typeof product.taxRate === 'number') {
+            return {
+                rate: product.taxRate,
+                hsnCode: product.hsnCode || '',
+                ruleId: null,
+                ruleType: 'seller_product'
+            };
+        }
     }
 
-    // 2. Category level rule
-    if (!resolvedRule && categoryId) {
+    let resolvedRule = null;
+
+    // 2. Category level rule fallback
+    if (categoryId) {
         resolvedRule = await GstRule.findOne({
             type: 'category',
             categoryId,
@@ -31,7 +35,7 @@ export const getEffectiveGstRate = async (productId, categoryId) => {
         }).lean();
     }
 
-    // 3. Global level default
+    // 3. Global level default fallback
     if (!resolvedRule) {
         resolvedRule = await GstRule.findOne({
             type: 'global',

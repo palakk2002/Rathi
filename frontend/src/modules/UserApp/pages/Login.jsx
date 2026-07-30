@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiPhone } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FiPhone, FiLock, FiArrowLeft } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { useCartStore } from '../../../shared/store/useStore';
 import { useWishlistStore } from '../../../shared/store/wishlistStore';
@@ -11,7 +10,6 @@ import {
   consumePostLoginAction,
   getPostLoginRedirect,
 } from '../../../shared/utils/postLoginAction';
-import { isValidEmail } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
 import MobileLayout from '../components/Layout/MobileLayout';
 import PageTransition from '../../../shared/components/PageTransition';
@@ -19,15 +17,11 @@ import PageTransition from '../../../shared/components/PageTransition';
 const MobileLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading } = useAuthStore();
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm();
+  const { sendOtpPhone, verifyOtpPhone, isLoading } = useAuthStore();
+  
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState(1); // 1 = Phone Input, 2 = OTP Input
 
   const storedFrom = getPostLoginRedirect();
   const from = location.state?.from?.pathname || storedFrom || '/home';
@@ -46,156 +40,177 @@ const MobileLogin = () => {
     }
   };
 
-  const onSubmit = async (data) => {
+  const handleSendOtp = async (e) => {
+    if (e) e.preventDefault();
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      toast.error('Please enter a valid 10-digit phone number.');
+      return;
+    }
+
     try {
-      await login(data.email, data.password, rememberMe);
+      await sendOtpPhone(cleanPhone);
+      toast.success('OTP sent successfully!');
+      setStep(2);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to send OTP.');
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (otp.length !== 6) {
+      toast.error('Please enter a 6-digit OTP.');
+      return;
+    }
+
+    try {
+      await verifyOtpPhone(cleanPhone, otp);
       replayPendingAction();
       toast.success('Login successful!');
       clearPostLoginRedirect();
       navigate(from === '/login' ? '/home' : from, { replace: true });
     } catch (error) {
-      const backendMessage = String(
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        ''
-      );
-      const message = String(error?.message || '');
-      const normalized = `${backendMessage} ${message}`.toLowerCase();
-
-      if (
-        normalized.includes('email not verified') ||
-        normalized.includes('verify your email')
-      ) {
-        navigate('/verification', {
-          state: { email: String(data.email || '').trim().toLowerCase() },
-          replace: true,
-        });
-        return;
-      }
-      toast.error(error.message || 'Login failed. Please try again.');
+      toast.error(error?.response?.data?.message || error?.message || 'Invalid OTP. Please try again.');
     }
+  };
+
+  const handlePhoneChange = (e) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhone(val);
+  };
+
+  const handleOtpChange = (e) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setOtp(val);
   };
 
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full min-h-screen flex items-start justify-center px-4 pt-6 pb-8">
+        <div className="w-full min-h-screen flex items-start justify-center px-4 pt-12 pb-8 bg-gray-50">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100">
+              
+              {/* Back Button for OTP Step */}
+              {step === 2 && (
+                <button
+                  onClick={() => {
+                    setStep(1);
+                    setOtp('');
+                  }}
+                  className="flex items-center text-gray-500 hover:text-gray-800 transition-colors mb-6 text-sm font-medium"
+                >
+                  <FiArrowLeft className="mr-2" size={16} />
+                  Change Phone Number
+                </button>
+              )}
+
               {/* Header */}
               <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-                <p className="text-sm text-gray-600">Login to access your account</p>
-              </div>
-
-              {/* Login Form */}
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <FiMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="email"
-                      {...register('email', {
-                        required: 'Email is required',
-                        validate: (value) =>
-                          !value || isValidEmail(value) || 'Please enter a valid email',
-                      })}
-                      className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 ${errors.email
-                          ? 'border-red-300 focus:border-red-500'
-                          : 'border-gray-200 focus:border-primary-500'
-                        } focus:outline-none transition-colors text-base`}
-                      placeholder="your.email@example.com"
-                    />
-                  </div>
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-                  )}
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      {...register('password', {
-                        required: 'Password is required',
-                        minLength: {
-                          value: 6,
-                          message: 'Password must be at least 6 characters',
-                        },
-                      })}
-                      className={`w-full pl-12 pr-12 py-3 rounded-xl border-2 ${errors.password
-                          ? 'border-red-300 focus:border-red-500'
-                          : 'border-gray-200 focus:border-primary-500'
-                        } focus:outline-none transition-colors text-base`}
-                      placeholder="Enter your password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-                  )}
-                </div>
-
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Remember me</span>
-                  </label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                  >
-                    Forget password?
-                  </Link>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-primary-500 hover:bg-primary-600 text-white py-3.5 rounded-xl font-semibold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Logging in...' : 'Log In'}
-                </button>
-              </form>
-
-              {/* Sign Up Link */}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Don't have an account?{' '}
-                  <Link
-                    to="/register"
-                    className="text-primary-600 hover:text-primary-700 font-semibold"
-                  >
-                    Sign Up
-                  </Link>
+                <h1 className="text-2xl font-extrabold text-gray-900 mb-2 tracking-tight">
+                  {step === 1 ? 'Welcome to Raathi' : 'Verify OTP'}
+                </h1>
+                <p className="text-sm text-gray-600 px-4">
+                  {step === 1 
+                    ? 'Enter your phone number to proceed' 
+                    : `Enter the 6-digit verification code sent to +91 ${phone}`
+                  }
                 </p>
               </div>
+
+              <AnimatePresence mode="wait">
+                {step === 1 ? (
+                  <motion.form
+                    key="phone-step"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    onSubmit={handleSendOtp}
+                    className="space-y-6"
+                  >
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                        Mobile Number
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center border-r border-gray-200 pr-2">
+                          <FiPhone className="text-gray-400 mr-1.5" />
+                          <span className="text-gray-600 text-sm font-semibold">+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={handlePhoneChange}
+                          required
+                          className="w-full pl-20 pr-4 py-3.5 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition-all text-base tracking-widest font-medium"
+                          placeholder="9876543210"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || phone.length !== 10}
+                      className="w-full bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white py-3.5 rounded-xl font-bold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? 'Sending...' : 'Get OTP'}
+                    </button>
+                  </motion.form>
+                ) : (
+                  <motion.form
+                    key="otp-step"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    onSubmit={handleVerifyOtp}
+                    className="space-y-6"
+                  >
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                        Verification Code (OTP)
+                      </label>
+                      <div className="relative">
+                        <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={otp}
+                          onChange={handleOtpChange}
+                          required
+                          className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition-all text-base tracking-widest text-center font-bold"
+                          placeholder="******"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || otp.length !== 6}
+                      className="w-full bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white py-3.5 rounded-xl font-bold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? 'Verifying...' : 'Login'}
+                    </button>
+
+                    <div className="text-center pt-2">
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={isLoading}
+                        className="text-sm text-primary-600 hover:text-primary-700 font-semibold"
+                      >
+                        Resend OTP
+                      </button>
+                    </div>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+
             </div>
           </motion.div>
         </div>

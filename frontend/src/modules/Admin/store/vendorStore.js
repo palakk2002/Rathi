@@ -4,6 +4,7 @@ import {
   getVendorById,
   updateVendorStatus as updateVendorStatusApi,
   updateCommissionRate as updateCommissionRateApi,
+  updateVendorVerificationDetails as updateVendorVerificationDetailsApi,
 } from "../services/adminService";
 
 const normalizeVendor = (vendor) => {
@@ -106,6 +107,27 @@ export const useVendorStore = create((set, get) => ({
           state.selectedVendor &&
           String(state.selectedVendor.id || state.selectedVendor._id) ===
           String(id)
+            ? { ...state.selectedVendor, ...vendor }
+            : state.selectedVendor,
+      }));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  updateVendorVerification: async (id, formData) => {
+    try {
+      const response = await updateVendorVerificationDetailsApi(id, formData);
+      const vendor = normalizeVendor(response?.data ?? response);
+      if (!vendor) return false;
+      set((state) => ({
+        vendors: state.vendors.map((v) =>
+          String(v.id || v._id) === String(id) ? { ...v, ...vendor } : v
+        ),
+        selectedVendor:
+          state.selectedVendor &&
+          String(state.selectedVendor.id || state.selectedVendor._id) === String(id)
             ? { ...state.selectedVendor, ...vendor }
             : state.selectedVendor,
       }));

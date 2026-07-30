@@ -16,7 +16,7 @@ const toEntries = (value) => {
   return [];
 };
 
-const VariantSelector = ({ variants, onVariantChange, currentPrice }) => {
+const VariantSelector = ({ variants, onVariantChange, currentPrice, highlightFields = [] }) => {
   const [selectedVariant, setSelectedVariant] = useState({});
 
   const axes = useMemo(() => {
@@ -150,8 +150,16 @@ const VariantSelector = ({ variants, onVariantChange, currentPrice }) => {
     <div className="space-y-6">
       {axes.map((axis) => {
         const isColor = axis.key === 'color' || axis.label.toLowerCase() === 'color';
+        const isHighlighted = highlightFields.includes(axis.label) || highlightFields.includes(axis.key);
         return (
-          <div key={axis.key}>
+          <div
+            key={axis.key}
+            className={`transition-all duration-300 ${
+              isHighlighted
+                ? "animate-shake border-2 border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.15)] rounded-2xl p-4 bg-red-50/20"
+                : ""
+            }`}
+          >
             <label className="block text-sm font-bold text-gray-700 mb-3">
               {axis.label}:{" "}
               <span className="font-normal text-gray-600">

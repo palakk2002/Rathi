@@ -16,6 +16,7 @@ import * as uploadController from '../controllers/upload.controller.js';
 import * as gstController from '../../admin/controllers/gst.controller.js';
 import * as brandController from '../controllers/brand.controller.js';
 import * as payoutController from '../controllers/payout.controller.js';
+import * as gstSettingsController from '../controllers/gstSettings.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -23,6 +24,7 @@ import { validate } from '../../../middlewares/validate.js';
 import {
     registerSchema,
     loginSchema,
+    sendLoginOtpSchema,
     verifyOtpSchema,
     resendOtpSchema,
     refreshTokenSchema,
@@ -67,6 +69,7 @@ router.post('/auth/resend-otp', validate(resendOtpSchema), authController.resend
 router.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
 router.post('/auth/verify-reset-otp', authLimiter, validate(verifyResetOtpSchema), authController.verifyResetOTP);
 router.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
+router.post('/auth/send-login-otp', authLimiter, validate(sendLoginOtpSchema), authController.sendLoginOTP);
 router.post('/auth/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/auth/refresh', validate(refreshTokenSchema), authController.refresh);
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
@@ -78,6 +81,11 @@ router.get('/payouts/summary', ...vendorAuth, payoutController.getPayoutSummary)
 router.get('/payouts/settlements', ...vendorAuth, payoutController.getVendorSettlements);
 router.get('/payouts/bank-details', ...vendorAuth, payoutController.getVendorBankDetails);
 router.put('/payouts/bank-details', ...vendorAuth, payoutController.updateVendorBankDetails);
+
+// GST Settings
+router.get('/gst-settings', ...vendorAuth, gstSettingsController.getGstSettings);
+router.post('/gst-settings', ...vendorAuth, gstSettingsController.updateGstSettings);
+router.get('/gst-settings/category/:categoryId', ...vendorAuth, gstSettingsController.getCategoryDefaultGst);
 
 // Products
 router.get('/products', ...vendorAuth, productController.getVendorProducts);

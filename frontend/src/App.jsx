@@ -295,9 +295,7 @@ const AppRoutes = () => {
       <Route
         path="/register"
         element={
-          <RouteWrapper>
-            <MobileRegister />
-          </RouteWrapper>
+          <Navigate to="/login" replace />
         }
       />
       <Route
@@ -658,6 +656,7 @@ const AppRoutes = () => {
         <Route path="settings/payment-settings" element={<VendorSettings />} />
         <Route path="settings/shipping" element={<VendorSettings />} />
         <Route path="settings/shipping-settings" element={<VendorSettings />} />
+        <Route path="settings/gst" element={<VendorSettings />} />
         <Route path="profile" element={<VendorSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
