@@ -29,17 +29,19 @@ export const sendOTP = async (user, type = 'verification') => {
     }
 
     if (user.email) {
-        sendOTPEmail({
-            to: user.email,
-            otp,
-            title,
-            userType,
-        }).then(() => {
+        try {
+            await sendOTPEmail({
+                to: user.email,
+                otp,
+                title,
+                userType,
+            });
             console.log(`[OTP Email Success] Verification email sent to ${user.email}`);
-        }).catch((err) => {
+        } catch (err) {
             console.error(`[OTP Email Error] Failed to send email to ${user.email}:`, err.message);
-        });
+        }
     }
+
 
     if (process.env.NODE_ENV !== 'production') {
         console.log(`[OTP] ${type} OTP generated for ${user.email || user.phone}: ${otp}`);

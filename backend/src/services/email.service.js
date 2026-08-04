@@ -1,45 +1,66 @@
 import nodemailer from 'nodemailer';
 
+const smtpPort = Number(process.env.SMTP_PORT) || 587;
+const isSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
+
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: smtpPort,
+    secure: isSecure,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
     tls: {
         rejectUnauthorized: false,
+        ciphers: 'SSLv3',
     },
+    connectionTimeout: 10000, // 10s connection timeout
+    greetingTimeout: 10000,   // 10s greeting timeout
+    socketTimeout: 15000,     // 15s socket activity timeout
+    pool: true,               // use pooled connections for efficiency in production
+    maxConnections: 5,
+    maxMessages: 100,
 });
 
 // Verify SMTP connection on startup if SMTP_USER is set
 if (process.env.SMTP_USER) {
     transporter.verify((error) => {
         if (error) {
-            console.warn(`[SMTP Warning] Failed to connect to mail server (${process.env.SMTP_HOST}):`, error.message);
+            console.warn(`[SMTP Warning] Failed to connect to mail server (${process.env.SMTP_HOST || 'smtp.gmail.com'}:${smtpPort}):`, error.message);
         } else {
             console.log(`✅ [SMTP] Mail server connected successfully (${process.env.SMTP_USER})`);
         }
     });
+} else {
+    console.warn(`⚠️ [SMTP Warning] SMTP_USER is not set in environment variables! Emails will not be sent.`);
 }
+
 
 /**
  * Send an email
  * @param {Object} options - { to, subject, html, text }
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
+    const senderEmail = process.env.SMTP_USER || process.env.FROM_EMAIL;
     const mailOptions = {
-        from: `"${process.env.FROM_NAME || 'Rathi Store'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+        from: `"${process.env.FROM_NAME || 'Rathi'}" <${senderEmail}>`,
+        replyTo: senderEmail,
         to,
         subject,
         html,
         text,
+        headers: {
+            'X-Priority': '1 (Highest)',
+            'X-MSMail-Priority': 'High',
+            'Importance': 'High',
+        },
     };
 
     const info = await transporter.sendMail(mailOptions);
     return info;
 };
+
 
 /**
  * Send branded HTML OTP email
