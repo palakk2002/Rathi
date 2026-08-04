@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { sendEmail } from './email.service.js';
+import { sendOTPEmail } from './email.service.js';
 
 /**
  * Generates a 6-digit OTP and sets expiry (10 minutes)
@@ -14,19 +14,37 @@ export const sendOTP = async (user, type = 'verification') => {
     user.otpExpiry = otpExpiry;
     await user.save({ validateBeforeSave: false });
 
-    // Send email asynchronously in the background so we don't block the request handler
-    sendEmail({
-        to: user.email,
-        subject: 'Your verification code',
-        text: `Your verification code is ${otp}. It expires in 10 minutes.`,
-        html: `<p>Your verification code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-    }).catch((err) => {
-        console.warn(`[OTP] Email send failed for ${user.email}: ${err.message}`);
-    });
+    // Format human-readable title & user type according to type tag
+    let title = 'Verification Code';
+    let userType = 'Account';
+    if (type.includes('vendor')) {
+        title = 'Seller Account Verification';
+        userType = 'Seller';
+    } else if (type.includes('email')) {
+        title = 'Email Verification';
+        userType = 'Customer';
+    } else if (type.includes('login')) {
+        title = 'Login Verification';
+        userType = 'Account';
+    }
+
+    if (user.email) {
+        sendOTPEmail({
+            to: user.email,
+            otp,
+            title,
+            userType,
+        }).then(() => {
+            console.log(`[OTP Email Success] Verification email sent to ${user.email}`);
+        }).catch((err) => {
+            console.error(`[OTP Email Error] Failed to send email to ${user.email}:`, err.message);
+        });
+    }
 
     if (process.env.NODE_ENV !== 'production') {
-        console.log(`[OTP] ${type} OTP generated for ${user.email}: ${otp}`);
+        console.log(`[OTP] ${type} OTP generated for ${user.email || user.phone}: ${otp}`);
     }
 
     return otp;
 };
+

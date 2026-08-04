@@ -6,6 +6,7 @@ import User from '../../../models/User.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { sendOTP } from '../../../services/otp.service.js';
 import { sendEmail } from '../../../services/email.service.js';
+import { sendSMS } from '../../../services/sms.service.js';
 import {
     uploadLocalFileToCloudinaryAndCleanup,
     deleteFromCloudinary,
@@ -368,10 +369,16 @@ export const sendOtpPhone = asyncHandler(async (req, res) => {
     user.otpExpiry = otpExpiry;
     await user.save({ validateBeforeSave: false });
 
-    // Log the OTP to console for local testing
-    console.log(`[PHONE OTP] OTP for customer ${normalizedPhone} is: ${otp}`);
+    // Send SMS (and backup Email if user has email)
+    await sendSMS({ phone: normalizedPhone, otp, email: user.email });
 
-    res.status(200).json(new ApiResponse(200, { phone: normalizedPhone }, 'OTP sent successfully.'));
+    const isDev = process.env.NODE_ENV !== 'production';
+    const responseData = {
+        phone: normalizedPhone,
+        ...(isDev ? { debugOtp: otp } : {})
+    };
+
+    res.status(200).json(new ApiResponse(200, responseData, 'OTP sent successfully.'));
 });
 
 // POST /api/user/auth/verify-otp-phone
@@ -400,3 +407,43 @@ export const verifyOtpPhone = asyncHandler(async (req, res) => {
         user: { id: user._id, name: user.name, email: user.email, phone: user.phone, avatar: user.avatar }
     }, 'Login successful.'));
 });
+
+// POST /api/user/auth/send-otp-email
+export const sendOtpEmail = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+        throw new ApiError(400, 'Please provide a valid email address.');
+    }
+
+    let user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+        // Auto-register user with email for seamless OTP login
+        const randomPassword = crypto.randomBytes(16).toString('hex');
+        const namePart = normalizedEmail.split('@')[0] || 'User';
+        const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+
+        user = await User.create({
+            name: formattedName,
+            email: normalizedEmail,
+            password: randomPassword,
+            isVerified: false,
+        });
+    }
+
+    if (!user.isActive) {
+        throw new ApiError(403, 'Your account has been deactivated.');
+    }
+
+    const otp = await sendOTP(user, 'email_verification');
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    const responseData = {
+        email: normalizedEmail,
+        ...(isDev ? { debugOtp: otp } : {})
+    };
+
+    res.status(200).json(new ApiResponse(200, responseData, 'OTP sent to your email successfully.'));
+});
+

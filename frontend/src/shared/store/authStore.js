@@ -101,9 +101,61 @@ export const useAuthStore = create(
         set({ isLoading: true });
         try {
           const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-          await api.post('/user/auth/send-otp-phone', { phone: normalizedPhone });
+          const response = await api.post('/user/auth/send-otp-phone', { phone: normalizedPhone });
+          const payload = response?.data ?? response;
           set({ isLoading: false });
-          return { success: true, phone: normalizedPhone };
+          return { success: true, phone: normalizedPhone, debugOtp: payload?.debugOtp };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Send OTP to email
+      sendOtpEmail: async (email) => {
+        set({ isLoading: true });
+        try {
+          const normalizedEmail = String(email || '').trim().toLowerCase();
+          const response = await api.post('/user/auth/send-otp-email', { email: normalizedEmail });
+          const payload = response?.data ?? response;
+          set({ isLoading: false });
+          return { success: true, email: normalizedEmail, debugOtp: payload?.debugOtp };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Verify OTP email and complete login
+      verifyOtpEmail: async (email, otp) => {
+        set({ isLoading: true });
+        try {
+          const normalizedEmail = String(email || '').trim().toLowerCase();
+          const response = await api.post('/user/auth/verify-otp', { email: normalizedEmail, otp });
+          const payload = response?.data ?? response;
+          const accessToken = payload?.accessToken;
+          const refreshToken = payload?.refreshToken;
+          const user = payload?.user;
+
+          if (!accessToken || !refreshToken || !user) {
+            throw new Error('Invalid OTP verification response from server.');
+          }
+
+          set({
+            user,
+            token: accessToken,
+            refreshToken,
+            isAuthenticated: true,
+            pendingEmail: null,
+            isLoading: false,
+          });
+
+          localStorage.setItem('token', accessToken);
+          localStorage.setItem('refresh-token', refreshToken);
+
+          registerFCMToken(true).catch((err) => console.log('FCM registration failed:', err));
+
+          return { success: true, user };
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -142,6 +194,7 @@ export const useAuthStore = create(
 
           return { success: true, user };
         } catch (error) {
+
           set({ isLoading: false });
           throw error;
         }

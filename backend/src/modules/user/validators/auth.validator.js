@@ -63,6 +63,12 @@ export const sendOtpPhoneSchema = Joi.object({
     }),
 });
 
+export const sendOtpEmailSchema = Joi.object({
+    email: Joi.string().email().required().messages({
+        'string.email': 'Please provide a valid email address.',
+    }),
+});
+
 export const verifyOtpPhoneSchema = Joi.object({
     phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
         'string.pattern.base': 'Please enter a valid 10-digit phone number.',

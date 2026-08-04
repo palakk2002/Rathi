@@ -24,6 +24,7 @@ import {
     updateProfileSchema,
     changePasswordSchema,
     sendOtpPhoneSchema,
+    sendOtpEmailSchema,
     verifyOtpPhoneSchema,
 } from '../validators/auth.validator.js';
 import {
@@ -44,7 +45,9 @@ router.post('/auth/verify-reset-otp', authLimiter, validate(verifyResetOtpSchema
 router.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 router.post('/auth/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/auth/send-otp-phone', authLimiter, validate(sendOtpPhoneSchema), authController.sendOtpPhone);
+router.post('/auth/send-otp-email', authLimiter, validate(sendOtpEmailSchema), authController.sendOtpEmail);
 router.post('/auth/verify-otp-phone', authLimiter, validate(verifyOtpPhoneSchema), authController.verifyOtpPhone);
+
 router.post('/auth/refresh', validate(refreshTokenSchema), authController.refresh);
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...customerAuth, authController.getProfile);
