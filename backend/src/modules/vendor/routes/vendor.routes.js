@@ -12,6 +12,7 @@ import * as notificationController from '../controllers/notification.controller.
 import * as returnController from '../controllers/return.controller.js';
 import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
+import * as vendorShipmentController from '../controllers/vendorShipment.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as gstController from '../../admin/controllers/gst.controller.js';
 import * as brandController from '../controllers/brand.controller.js';
@@ -102,6 +103,13 @@ router.post('/brands', ...vendorAuth, brandController.createVendorBrand);
 router.get('/orders', ...vendorAuth, orderController.getVendorOrders);
 router.get('/orders/:id', ...vendorAuth, orderController.getVendorOrderById);
 router.patch('/orders/:id/status', ...vendorAuth, orderController.updateOrderStatus);
+router.post('/orders/:id/shipment', ...vendorAuth, vendorShipmentController.createVendorShipment);
+router.get('/orders/:id/shipment', ...vendorAuth, vendorShipmentController.getVendorShipment);
+router.get('/orders/:id/shipment/tracking', ...vendorAuth, vendorShipmentController.getVendorShipmentTracking);
+router.get('/orders/:id/shipment/label', ...vendorAuth, vendorShipmentController.getVendorShipmentLabel);
+router.get('/orders/:id/shipment/manifest', ...vendorAuth, vendorShipmentController.getVendorShipmentManifest);
+router.get('/orders/:id/shipment/invoice', ...vendorAuth, vendorShipmentController.getVendorShipmentInvoice);
+router.post('/orders/:id/shipment/cancel', ...vendorAuth, vendorShipmentController.cancelVendorShipment);
 
 // Customers
 router.get('/customers', ...vendorAuth, customerController.getVendorCustomers);

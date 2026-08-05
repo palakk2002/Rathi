@@ -94,9 +94,20 @@ const orderSchema = new mongoose.Schema(
             index:  true,
             sparse: true,   // AWB / tracking number from provider
         },
-        trackingUrl:     { type: String },
-        providerStatus:  { type: String },   // raw provider status (before mapping)
-        providerQuote:   { type: mongoose.Schema.Types.Mixed },   // price snapshot at booking
+        awbCode:             { type: String, index: true, sparse: true },
+        courierId:           { type: Number },
+        courierName:         { type: String },
+        shiprocketOrderId:   { type: String, index: true, sparse: true },
+        shiprocketShipmentId:{ type: String, index: true, sparse: true },
+        trackingUrl:         { type: String },
+        labelUrl:            { type: String },
+        manifestUrl:         { type: String },
+        invoiceUrl:          { type: String },
+        pickupStatus:        { type: String, default: 'PENDING' },
+        shipmentStatus:      { type: String },
+        lastTrackingUpdate:  { type: Date },
+        providerStatus:      { type: String },   // raw provider status (before mapping)
+        providerQuote:       { type: mongoose.Schema.Types.Mixed },   // price snapshot at booking
         shipmentCreatedAt:   { type: Date },
         shipmentCancelledAt: { type: Date },
         // ─────────────────────────────────────────────────────────────────────

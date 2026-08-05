@@ -145,10 +145,20 @@ const AssignDelivery = () => {
     },
     {
       key: "deliveryBoyId",
-      label: "Assigned To",
+      label: "Assigned Fulfillment Partner",
       sortable: false,
-      render: (value) => {
-        const name = value?.name || "Unassigned";
+      render: (value, row) => {
+        if (row.providerName === 'shiprocket' || row.awbCode) {
+          return (
+            <div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold">
+                Shiprocket ({row.courierName || 'Courier'})
+              </span>
+              <p className="text-[11px] text-gray-500 font-mono mt-0.5">AWB: {row.awbCode || row.externalShipmentId}</p>
+            </div>
+          );
+        }
+        const name = value?.name || "Unassigned (Local Delivery)";
         const phone = value?.phone || "";
         return (
           <div>

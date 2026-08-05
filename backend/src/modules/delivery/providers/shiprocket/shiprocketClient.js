@@ -91,13 +91,13 @@ function httpsRequest(method, urlStr, data, headers) {
 
 /** Lazy-loads ProviderTokenStore to avoid circular-import issues at module load time. */
 async function getTokenStore() {
-    const { default: ProviderTokenStore } = await import('../../../models/ProviderTokenStore.model.js');
+    const { default: ProviderTokenStore } = await import('../../../../models/ProviderTokenStore.model.js');
     return ProviderTokenStore;
 }
 
 async function fetchTokenFromDB() {
     const Store = await getTokenStore();
-    return Store.findOne({ providerName: 'shiprocket' }).lean();
+    return Store.findOne({ providerName: 'shiprocket' }).select('+accessToken +refreshToken +expiresAt').lean();
 }
 
 async function persistToken(accessToken, expiresAt) {
@@ -137,18 +137,20 @@ async function doRefreshToken() {
     return res.data.token;
 }
 
-async function getToken() {
-    // 1. In-memory cache (fast path)
-    if (_cachedToken && _cachedExpiresAt && new Date(_cachedExpiresAt) > new Date()) {
-        return _cachedToken;
-    }
+async function getToken(forceRefresh = false) {
+    if (!forceRefresh) {
+        // 1. In-memory cache (fast path)
+        if (_cachedToken && _cachedExpiresAt && new Date(_cachedExpiresAt) > new Date()) {
+            return _cachedToken;
+        }
 
-    // 2. DB cache
-    const stored = await fetchTokenFromDB();
-    if (stored?.accessToken && stored.expiresAt && new Date(stored.expiresAt) > new Date()) {
-        _cachedToken     = stored.accessToken;
-        _cachedExpiresAt = stored.expiresAt;
-        return stored.accessToken;
+        // 2. DB cache
+        const stored = await fetchTokenFromDB();
+        if (stored?.accessToken && stored.expiresAt && new Date(stored.expiresAt) > new Date()) {
+            _cachedToken     = stored.accessToken;
+            _cachedExpiresAt = stored.expiresAt;
+            return stored.accessToken;
+        }
     }
 
     // 3. Fetch fresh token
@@ -202,9 +204,10 @@ export async function shiprocketRequest(method, path, data) {
     }
 
     if (res.status >= 400) {
+        const errorMsg = res.data?.message || (res.data?.errors ? JSON.stringify(res.data.errors) : (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)));
         throw new ProviderError(
             'REQUEST_FAILED',
-            `Shiprocket ${method} ${path} failed [${res.status}]: ${JSON.stringify(res.data)}`,
+            errorMsg || `Shiprocket ${method} ${path} failed with status ${res.status}`
         );
     }
 

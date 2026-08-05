@@ -40,6 +40,11 @@ const deliveryShipmentSchema = new mongoose.Schema(
             ref:  'Order',
             index: true,
         },
+        vendorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref:  'Vendor',
+            index: true,
+        },
         providerName: {
             type:     String,
             required: true,
@@ -56,10 +61,26 @@ const deliveryShipmentSchema = new mongoose.Schema(
             type:   String,
             sparse: true,
         },
+        shiprocketShipmentId: {
+            type:   String,
+            sparse: true,
+        },
+        awbCode: {
+            type:   String,
+            index:  true,
+            sparse: true,
+        },
+        courierId:   { type: Number },
+        courierName: { type: String },
 
-        // Tracking
+        // Tracking & Documents
         trackingUrl: { type: String },
         label:       { type: String },   // base64-encoded PDF label (nullable)
+        labelUrl:    { type: String },
+        manifestUrl: { type: String },
+        invoiceUrl:  { type: String },
+        pickupStatus: { type: String, default: 'PENDING' },
+        pickupScheduledDate: { type: Date },
 
         // Status
         status: {

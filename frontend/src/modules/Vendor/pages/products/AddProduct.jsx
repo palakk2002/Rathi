@@ -475,7 +475,7 @@ const AddProduct = () => {
       return;
     }
 
-    if (!formData.name || !formData.price || !formData.stockQuantity || !formData.categoryId) {
+    if (!formData.name || !formData.price || !formData.categoryId) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -489,7 +489,7 @@ const AddProduct = () => {
     const parsedOriginalPrice = formData.originalPrice
       ? parseFloat(formData.originalPrice)
       : null;
-    const parsedStockQuantity = parseInt(formData.stockQuantity, 10);
+    const parsedStockQuantity = formData.stockQuantity ? parseInt(formData.stockQuantity, 10) : 999;
     const parsedTotalAllowedQuantity = formData.totalAllowedQuantity
       ? parseInt(formData.totalAllowedQuantity, 10)
       : null;
@@ -499,7 +499,7 @@ const AddProduct = () => {
 
     const parsedTaxRate = parseFloat(formData.taxRate);
 
-    if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedStockQuantity)) {
+    if (!Number.isFinite(parsedPrice)) {
       toast.error("Please enter valid numeric values");
       return;
     }
@@ -859,22 +859,6 @@ const AddProduct = () => {
         <div>
           <h2 className="text-base font-bold text-gray-800 mb-2">Inventory</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Stock Quantity <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="stockQuantity"
-                value={formData.stockQuantity}
-                onChange={handleChange}
-                required
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                placeholder="0"
-              />
-            </div>
-
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Stock Status

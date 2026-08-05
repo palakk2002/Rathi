@@ -591,7 +591,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.price || !formData.stockQuantity) {
+    if (!formData.name || !formData.price) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -629,7 +629,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       originalPrice: formData.originalPrice
         ? parseFloat(formData.originalPrice)
         : null,
-      stockQuantity: parseInt(formData.stockQuantity),
+      stockQuantity: formData.stockQuantity ? parseInt(formData.stockQuantity, 10) : 999,
       totalAllowedQuantity: formData.totalAllowedQuantity
         ? parseInt(formData.totalAllowedQuantity)
         : null,
@@ -1019,21 +1019,6 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                       Inventory
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Stock Quantity <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          name="stockQuantity"
-                          value={formData.stockQuantity}
-                          onChange={handleChange}
-                          required
-                          min="0"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Stock Status

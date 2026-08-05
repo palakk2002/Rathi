@@ -59,6 +59,25 @@ export const assignDeliveryBoy = (id, deliveryBoyId) =>
 export const deleteOrder = (id) =>
     api.delete(`/admin/orders/${id}`);
 
+// ─── Third-Party Delivery Shipments (Admin Monitoring) ────────────────────────
+export const getAdminOrderShipment = (id) =>
+    api.get(`/admin/orders/${id}/shipment`);
+
+export const getAdminOrderTracking = (id) =>
+    api.get(`/admin/orders/${id}/shipment/tracking`);
+
+export const getAdminOrderLabel = (id) =>
+    api.get(`/admin/orders/${id}/shipment/label`);
+
+export const getAdminOrderManifest = (id) =>
+    api.get(`/admin/orders/${id}/shipment/manifest`);
+
+export const getAdminOrderInvoice = (id) =>
+    api.get(`/admin/orders/${id}/shipment/invoice`);
+
+export const cancelAdminOrderShipment = (id) =>
+    api.post(`/admin/orders/${id}/shipment/cancel`);
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });

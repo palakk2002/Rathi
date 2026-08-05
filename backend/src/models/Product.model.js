@@ -55,6 +55,10 @@ const productSchema = new mongoose.Schema(
         warrantyPeriod: { type: String },
         guaranteePeriod: { type: String },
         hsnCode: { type: String },
+        weight: { type: Number, default: 0.5 },  // Weight in kg
+        length: { type: Number, default: 10 },   // Length in cm
+        breadth: { type: Number, default: 10 },  // Breadth/Width in cm
+        height: { type: Number, default: 5 },    // Height in cm
         rating: { type: Number, default: 0, min: 0, max: 5 },
         reviewCount: { type: Number, default: 0 },
         taxRate: { type: Number, default: 18 },

@@ -27,7 +27,8 @@ import {
     getQuote,
     getActiveProviderName,
     refreshProviderToken,
-} from '../../../modules/delivery/deliveryManager.js';
+} from '../../delivery/deliveryManager.js';
+import shiprocketProvider from '../../delivery/providers/shiprocket/shiprocketProvider.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -235,6 +236,76 @@ export const getOrderShipment = asyncHandler(async (req, res) => {
     if (!shipment) throw new ApiError(404, 'No shipment record found for this order.');
 
     res.status(200).json(new ApiResponse(200, { order, shipment }, 'Shipment fetched.'));
+});
+
+// ─── GET /api/admin/orders/:id/shipment/label ─────────────────────────────────
+export const getOrderLabel = asyncHandler(async (req, res) => {
+    const order = await findOrder(req.params.id);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    const shipment = await DeliveryShipment.findOne({
+        $or: [{ orderId: order.orderId }, { orderMongoId: order._id }],
+    });
+
+    let labelUrl = shipment?.labelUrl || order.labelUrl;
+    if (!labelUrl && shipment?.shiprocketShipmentId) {
+        labelUrl = await shiprocketProvider.generateLabel(shipment.shiprocketShipmentId);
+        if (labelUrl) {
+            shipment.labelUrl = labelUrl;
+            order.labelUrl = labelUrl;
+            await Promise.all([shipment.save(), order.save()]);
+        }
+    }
+
+    if (!labelUrl) throw new ApiError(404, 'Shipping label not available yet.');
+    res.status(200).json(new ApiResponse(200, { labelUrl }, 'Shipping label fetched.'));
+});
+
+// ─── GET /api/admin/orders/:id/shipment/manifest ──────────────────────────────
+export const getOrderManifest = asyncHandler(async (req, res) => {
+    const order = await findOrder(req.params.id);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    const shipment = await DeliveryShipment.findOne({
+        $or: [{ orderId: order.orderId }, { orderMongoId: order._id }],
+    });
+
+    let manifestUrl = shipment?.manifestUrl || order.manifestUrl;
+    if (!manifestUrl && shipment?.shiprocketShipmentId) {
+        manifestUrl = await shiprocketProvider.generateManifest(shipment.shiprocketShipmentId);
+        if (manifestUrl) {
+            shipment.manifestUrl = manifestUrl;
+            order.manifestUrl = manifestUrl;
+            await Promise.all([shipment.save(), order.save()]);
+        }
+    }
+
+    if (!manifestUrl) throw new ApiError(404, 'Manifest document not available yet.');
+    res.status(200).json(new ApiResponse(200, { manifestUrl }, 'Manifest fetched.'));
+});
+
+// ─── GET /api/admin/orders/:id/shipment/invoice ───────────────────────────────
+export const getOrderInvoice = asyncHandler(async (req, res) => {
+    const order = await findOrder(req.params.id);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    const shipment = await DeliveryShipment.findOne({
+        $or: [{ orderId: order.orderId }, { orderMongoId: order._id }],
+    });
+
+    let invoiceUrl = shipment?.invoiceUrl || order.invoiceUrl;
+    if (!invoiceUrl && (shipment?.shiprocketOrderId || order.shiprocketOrderId)) {
+        const srOrderId = shipment?.shiprocketOrderId || order.shiprocketOrderId;
+        invoiceUrl = await shiprocketProvider.generateInvoice(srOrderId);
+        if (invoiceUrl) {
+            shipment.invoiceUrl = invoiceUrl;
+            order.invoiceUrl = invoiceUrl;
+            await Promise.all([shipment.save(), order.save()]);
+        }
+    }
+
+    if (!invoiceUrl) throw new ApiError(404, 'Invoice document not available yet.');
+    res.status(200).json(new ApiResponse(200, { invoiceUrl }, 'Invoice fetched.'));
 });
 
 // ─── POST /api/admin/delivery/token/refresh ───────────────────────────────────

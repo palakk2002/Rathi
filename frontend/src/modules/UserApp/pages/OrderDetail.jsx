@@ -316,10 +316,16 @@ const MobileOrderDetail = () => {
                         : order.paymentMethod || 'N/A'}
                     </span>
                   </div>
-                  {order.trackingNumber && (
+                  {(order.courierName || order.shipment?.courierName) && (
                     <div className="flex justify-between">
-                      <span>Tracking Number:</span>
-                      <span className="font-semibold text-gray-800">{order.trackingNumber}</span>
+                      <span>Courier Partner:</span>
+                      <span className="font-semibold text-purple-700">{order.courierName || order.shipment?.courierName}</span>
+                    </div>
+                  )}
+                  {(order.awbCode || order.externalShipmentId || order.trackingNumber) && (
+                    <div className="flex justify-between">
+                      <span>Tracking / AWB:</span>
+                      <span className="font-mono font-semibold text-gray-800">{order.awbCode || order.externalShipmentId || order.trackingNumber}</span>
                     </div>
                   )}
                   <div className="flex justify-between">

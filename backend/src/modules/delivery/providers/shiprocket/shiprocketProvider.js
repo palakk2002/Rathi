@@ -91,22 +91,79 @@ export const shiprocketProvider = {
         }
 
         const awbRes = await shiprocketRequest('POST', '/courier/assign/awb', awbPayload);
-        const awb    = awbRes?.response?.data?.awb_code
-                    || awbRes?.awb_code
-                    || null;
+        const awbData = awbRes?.response?.data || awbRes;
+        const awb     = awbData?.awb_code || null;
+        const courierId = awbData?.courier_company_id || context.courierId || null;
+        const courierName = awbData?.courier_name || null;
 
         const trackingUrl = awb
             ? `https://shiprocket.co/tracking/${awb}`
             : null;
 
+        // Step 3: Attempt label generation
+        let labelUrl = null;
+        try {
+            const labelRes = await shiprocketRequest('POST', '/courier/generate/label', {
+                shipment_id: [shipmentId],
+            });
+            labelUrl = labelRes?.label_url || labelRes?.response?.label_url || null;
+        } catch (err) {
+            console.warn('[shiprocketProvider] Label generation deferred:', err.message);
+        }
+
+        // Step 4: Schedule pickup automatically
+        try {
+            await shiprocketRequest('POST', '/courier/generate/pickup', {
+                shipment_id: [shipmentId],
+            });
+        } catch (err) {
+            console.warn('[shiprocketProvider] Pickup request deferred:', err.message);
+        }
+
         return {
-            externalId:     awb || String(shipmentId),
+            externalId:          awb || String(shipmentId),
+            awbCode:             awb,
+            courierId:           courierId ? Number(courierId) : null,
+            courierName:         courierName ? String(courierName) : null,
             trackingUrl,
-            label:          null,  // fetch separately if needed via /courier/generate/label
-            providerStatus: 'PICKUP SCHEDULED',
+            labelUrl,
+            label:               null,
+            providerStatus:      'PICKUP SCHEDULED',
             shiprocketOrderId:   orderId,
             shiprocketShipmentId: shipmentId,
         };
+    },
+
+    // ── generateLabel ──────────────────────────────────────────────────────
+    async generateLabel(shipmentId) {
+        const res = await shiprocketRequest('POST', '/courier/generate/label', {
+            shipment_id: [shipmentId],
+        });
+        return res?.label_url || res?.response?.label_url || null;
+    },
+
+    // ── generateManifest ───────────────────────────────────────────────────
+    async generateManifest(shipmentId) {
+        const res = await shiprocketRequest('POST', '/manifests/generate', {
+            shipment_id: [shipmentId],
+        });
+        return res?.manifest_url || res?.response?.manifest_url || null;
+    },
+
+    // ── generateInvoice ────────────────────────────────────────────────────
+    async generateInvoice(orderId) {
+        const res = await shiprocketRequest('POST', '/orders/print/invoice', {
+            ids: [orderId],
+        });
+        return res?.invoice_url || res?.response?.invoice_url || null;
+    },
+
+    // ── requestPickup ──────────────────────────────────────────────────────
+    async requestPickup(shipmentId) {
+        const res = await shiprocketRequest('POST', '/courier/generate/pickup', {
+            shipment_id: [shipmentId],
+        });
+        return res;
     },
 
     // ── cancelShipment ─────────────────────────────────────────────────────

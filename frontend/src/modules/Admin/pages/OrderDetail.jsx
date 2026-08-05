@@ -7,62 +7,89 @@ import {
   FiX,
   FiPhone,
   FiMapPin,
-  FiCreditCard,
   FiTruck,
   FiCalendar,
   FiTag,
   FiPackage,
   FiClock,
-  FiMail
+  FiMail,
+  FiDownload,
+  FiFileText,
+  FiRefreshCw,
+  FiXCircle,
+  FiCheckCircle
 } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Badge from '../../../shared/components/Badge';
 import AnimatedSelect from '../components/AnimatedSelect';
 import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
-import { getOrderById, updateOrderStatus } from '../services/adminService';
+import {
+  getOrderById,
+  updateOrderStatus,
+  getAdminOrderShipment,
+  getAdminOrderTracking,
+  getAdminOrderLabel,
+  getAdminOrderManifest,
+  getAdminOrderInvoice,
+  cancelAdminOrderShipment
+} from '../services/adminService';
 import toast from 'react-hot-toast';
 
-const OrderDetail = () => {
+const AdminOrderDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [order, setOrder] = useState(null);
+  const [shipment, setShipment] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState('');
-
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchOrderData = async () => {
-      setIsLoading(true);
+  // Document & tracking modal states
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingData, setTrackingData] = useState(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+  const [downloadingDoc, setDownloadingDoc] = useState(null);
+
+  const fetchOrderData = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getOrderById(id);
+      const o = response.data;
+
+      const normalizedOrder = {
+        ...o,
+        id: o.orderId || o._id,
+        customer: {
+          name: o.userId?.name || 'Unknown',
+          email: o.userId?.email || '',
+          phone: o.userId?.phone || ''
+        },
+        date: o.createdAt
+      };
+
+      setOrder(normalizedOrder);
+      setStatus(o.status);
+
+      // Fetch stored shipment details if present
       try {
-        const response = await getOrderById(id);
-        const o = response.data;
-
-        // Normalize data to match UI structure
-        const normalizedOrder = {
-          ...o,
-          id: o.orderId || o._id,
-          customer: {
-            name: o.userId?.name || 'Unknown',
-            email: o.userId?.email || '',
-            phone: o.userId?.phone || ''
-          },
-          date: o.createdAt
-        };
-
-        setOrder(normalizedOrder);
-        setStatus(o.status);
-      } catch (error) {
-        console.error("Fetch order detail error:", error);
-        toast.error('Order not found');
-        navigate('/admin/orders/all-orders');
-      } finally {
-        setIsLoading(false);
+        const shipmentRes = await getAdminOrderShipment(id);
+        const payload = shipmentRes?.data ?? shipmentRes;
+        if (payload?.shipment) setShipment(payload.shipment);
+      } catch {
+        // No third-party shipment record yet
       }
-    };
+    } catch (error) {
+      console.error("Fetch order detail error:", error);
+      toast.error('Order not found');
+      navigate('/admin/orders/all-orders');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchOrderData();
-  }, [id, navigate]);
+  }, [id]);
 
   const handleStatusUpdate = async () => {
     try {
@@ -75,27 +102,90 @@ const OrderDetail = () => {
     }
   };
 
+  const handleViewTracking = async () => {
+    setShowTrackingModal(true);
+    setLoadingTracking(true);
+    try {
+      const res = await getAdminOrderTracking(order.id);
+      const payload = res?.data ?? res;
+      setTrackingData(payload.liveTracking || payload.shipment);
+    } catch {
+      toast.error('Could not load live tracking information.');
+    } finally {
+      setLoadingTracking(false);
+    }
+  };
+
+  const handleDownloadLabel = async () => {
+    setDownloadingDoc('label');
+    try {
+      const res = await getAdminOrderLabel(order.id);
+      const labelUrl = res?.data?.labelUrl || res?.labelUrl;
+      if (labelUrl) window.open(labelUrl, '_blank');
+      else toast.error('Label URL not available.');
+    } catch {
+      toast.error('Failed to fetch shipping label.');
+    } finally {
+      setDownloadingDoc(null);
+    }
+  };
+
+  const handleDownloadManifest = async () => {
+    setDownloadingDoc('manifest');
+    try {
+      const res = await getAdminOrderManifest(order.id);
+      const manifestUrl = res?.data?.manifestUrl || res?.manifestUrl;
+      if (manifestUrl) window.open(manifestUrl, '_blank');
+      else toast.error('Manifest URL not available.');
+    } catch {
+      toast.error('Failed to fetch manifest.');
+    } finally {
+      setDownloadingDoc(null);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    setDownloadingDoc('invoice');
+    try {
+      const res = await getAdminOrderInvoice(order.id);
+      const invoiceUrl = res?.data?.invoiceUrl || res?.invoiceUrl;
+      if (invoiceUrl) window.open(invoiceUrl, '_blank');
+      else toast.error('Invoice URL not available.');
+    } catch {
+      toast.error('Failed to fetch invoice.');
+    } finally {
+      setDownloadingDoc(null);
+    }
+  };
+
+  const handleCancelShipment = async () => {
+    if (!window.confirm('Are you sure you want to cancel this Shiprocket shipment as Admin?')) return;
+    try {
+      await cancelAdminOrderShipment(order.id);
+      toast.success('Shipment cancelled successfully.');
+      fetchOrderData();
+    } catch {
+      toast.error('Failed to cancel shipment.');
+    }
+  };
+
   if (isLoading || !order) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-gray-500">Loading order details...</p>
       </div>
     );
   }
 
   const statusOptions = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'];
-
-  // Handle items - could be a number or an array
   const itemsCount = Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : 0);
   const itemsArray = Array.isArray(order.items) ? order.items : [];
 
-  // Calculate order breakdown
   const subtotal = order.subtotal ?? (order.total * 0.95);
   const shipping = order.shipping ?? (order.total * 0.05);
   const tax = order.tax ?? 0;
   const discount = order.discount ?? 0;
 
-  // Get payment method display name
   const getPaymentMethodName = (method) => {
     if (!method) return 'N/A';
     const methods = {
@@ -111,32 +201,22 @@ const OrderDetail = () => {
     return methods[method.toLowerCase()] || method;
   };
 
-  // Resolve product image safely from the order payload
   const getProductImage = (item) => {
-    if (item.image) {
-      return item.image;
-    }
-    if (item.productId?.images?.[0]) {
-      return item.productId.images[0];
-    }
-
-    // Return placeholder
+    if (item.image) return item.image;
+    if (item.productId?.images?.[0]) return item.productId.images[0];
     return 'https://via.placeholder.com/100x100?text=Product';
   };
 
+  const activeAwb = order?.awbCode || shipment?.awbCode || order?.externalShipmentId || shipment?.externalShipmentId;
+  const courierName = order?.courierName || shipment?.courierName || 'Shiprocket Courier';
+  const isShipmentActive = Boolean(activeAwb && shipment?.status !== 'cancelled' && shipment?.status !== 'failed');
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
-    >
-      {/* Compact Header */}
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between bg-white rounded-lg p-4 shadow-sm border border-gray-200">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+          <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
             <FiArrowLeft className="text-lg text-gray-600" />
           </button>
           <div>
@@ -149,31 +229,28 @@ const OrderDetail = () => {
             <>
               <button
                 onClick={handleStatusUpdate}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
               >
-                <FiCheck className="text-sm" />
-                Save
+                <FiCheck className="text-sm" /> Save
               </button>
               <button
                 onClick={() => {
                   setIsEditing(false);
                   setStatus(order.status);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-semibold"
               >
-                <FiX className="text-sm" />
-                Cancel
+                <FiX className="text-sm" /> Cancel
               </button>
             </>
           ) : (
             <>
-              <Badge variant={order.status}>{order.status}</Badge>
+              <Badge variant={order.status}>{order.status.toUpperCase()}</Badge>
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
               >
-                <FiEdit className="text-sm" />
-                Edit
+                <FiEdit className="text-sm" /> Edit Status
               </button>
             </>
           )}
@@ -183,13 +260,98 @@ const OrderDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Third-Party Shipment Logistics Monitoring Card */}
+          <div className="bg-gradient-to-r from-gray-900 via-indigo-950 to-gray-900 text-white rounded-xl shadow-md p-5 border border-indigo-900">
+            <div className="flex items-center justify-between border-b border-indigo-800 pb-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
+                  <FiTruck className="text-xl text-indigo-300" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-lg leading-tight">Shiprocket Logistics Supervisor</h2>
+                  <p className="text-xs text-indigo-300">Seller fulfillment & courier lifecycle monitor</p>
+                </div>
+              </div>
+              {isShipmentActive ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold rounded-full">
+                  <FiCheckCircle /> Active
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-500/20 text-gray-300 border border-gray-500/40 text-xs font-semibold rounded-full">
+                  No Active Shipment
+                </span>
+              )}
+            </div>
+
+            {isShipmentActive ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 p-3.5 rounded-lg border border-white/10 text-sm">
+                  <div>
+                    <p className="text-xs text-indigo-300">Courier Partner</p>
+                    <p className="font-semibold text-white truncate">{courierName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-indigo-300">AWB Number</p>
+                    <p className="font-mono font-semibold text-white truncate">{activeAwb}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-indigo-300">Pickup Status</p>
+                    <p className="font-semibold text-emerald-300">{shipment?.pickupStatus || 'SCHEDULED'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-indigo-300">Shipment Status</p>
+                    <p className="font-semibold text-indigo-200">{shipment?.status?.toUpperCase() || 'CREATED'}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    onClick={handleViewTracking}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <FiRefreshCw /> Live Tracking Logs
+                  </button>
+                  <button
+                    onClick={handleDownloadLabel}
+                    disabled={downloadingDoc === 'label'}
+                    className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <FiDownload /> {downloadingDoc === 'label' ? 'Downloading...' : 'Label PDF'}
+                  </button>
+                  <button
+                    onClick={handleDownloadManifest}
+                    disabled={downloadingDoc === 'manifest'}
+                    className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <FiFileText /> {downloadingDoc === 'manifest' ? 'Downloading...' : 'Manifest'}
+                  </button>
+                  <button
+                    onClick={handleDownloadInvoice}
+                    disabled={downloadingDoc === 'invoice'}
+                    className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <FiFileText /> {downloadingDoc === 'invoice' ? 'Downloading...' : 'Invoice'}
+                  </button>
+                  <button
+                    onClick={handleCancelShipment}
+                    className="px-3.5 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ml-auto"
+                  >
+                    <FiXCircle /> Admin Override Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-indigo-200 leading-relaxed">
+                Shipment has not been generated by the vendor yet. The assigned seller will generate Shiprocket shipment once the parcel is packed at their warehouse.
+              </p>
+            )}
+          </div>
+
           {/* Order Overview Card */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             {isEditing ? (
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Order Status
-                </label>
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Order Status</label>
                 <AnimatedSelect
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
@@ -211,9 +373,7 @@ const OrderDetail = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Payment</p>
-                  <p className="text-xs font-semibold text-gray-800 capitalize">
-                    {getPaymentMethodName(order.paymentMethod)}
-                  </p>
+                  <p className="text-xs font-semibold text-gray-800 capitalize">{getPaymentMethodName(order.paymentMethod)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Payment Status</p>
@@ -229,8 +389,7 @@ const OrderDetail = () => {
           {itemsArray.length > 0 && (
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <FiPackage className="text-primary-600 text-base" />
-                Order Items ({itemsCount})
+                <FiPackage className="text-primary-600 text-base" /> Order Items ({itemsCount})
               </h2>
               <div className="space-y-2">
                 {itemsArray.map((item) => (
@@ -239,19 +398,13 @@ const OrderDetail = () => {
                       src={getProductImage(item)}
                       alt={item.name || 'Product'}
                       className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/100x100?text=Product';
-                      }}
+                      onError={(e) => { e.target.src = 'https://via.placeholder.com/100x100?text=Product'; }}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-gray-800 truncate">{item.name || 'Unknown Product'}</p>
-                      <p className="text-xs text-gray-600">
-                        {formatCurrency(item.price || 0)} x {item.quantity || 1}
-                      </p>
+                      <p className="text-xs text-gray-600">{formatCurrency(item.price || 0)} x {item.quantity || 1}</p>
                     </div>
-                    <p className="font-bold text-sm text-gray-800">
-                      {formatCurrency((item.price || 0) * (item.quantity || 1))}
-                    </p>
+                    <p className="font-bold text-sm text-gray-800">{formatCurrency((item.price || 0) * (item.quantity || 1))}</p>
                   </div>
                 ))}
               </div>
@@ -261,11 +414,9 @@ const OrderDetail = () => {
           {/* Customer & Shipping Combined Card */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Customer Info */}
               <div>
                 <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-1.5">
-                  <FiMail className="text-primary-600 text-base" />
-                  Customer
+                  <FiMail className="text-primary-600 text-base" /> Customer
                 </h2>
                 <div className="space-y-2">
                   <div>
@@ -278,90 +429,39 @@ const OrderDetail = () => {
                   </div>
                   {(order.customer?.phone || order.shippingAddress?.phone) && (
                     <div>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <FiPhone className="text-xs" />
-                        Phone
-                      </p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1"><FiPhone className="text-xs" /> Phone</p>
                       <p className="font-semibold text-sm text-gray-800">{order.customer?.phone || order.shippingAddress?.phone}</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Shipping Address */}
               {order.shippingAddress && (
                 <div>
                   <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-1.5">
-                    <FiMapPin className="text-primary-600 text-base" />
-                    Shipping Address
+                    <FiMapPin className="text-primary-600 text-base" /> Shipping Address
                   </h2>
                   <div className="space-y-1.5 text-xs">
                     <p className="font-semibold text-gray-800">{order.shippingAddress.name || 'N/A'}</p>
-                    {order.shippingAddress.address && (
-                      <p className="text-gray-700">{order.shippingAddress.address}</p>
-                    )}
+                    {order.shippingAddress.address && <p className="text-gray-700">{order.shippingAddress.address}</p>}
                     {(order.shippingAddress.city || order.shippingAddress.state || order.shippingAddress.zipCode) && (
                       <p className="text-gray-700">
-                        {[
-                          order.shippingAddress.city,
-                          order.shippingAddress.state,
-                          order.shippingAddress.zipCode
-                        ].filter(Boolean).join(', ')}
+                        {[order.shippingAddress.city, order.shippingAddress.state, order.shippingAddress.zipCode].filter(Boolean).join(', ')}
                       </p>
                     )}
-                    {order.shippingAddress.country && (
-                      <p className="text-gray-700">{order.shippingAddress.country}</p>
-                    )}
+                    {order.shippingAddress.country && <p className="text-gray-700">{order.shippingAddress.country}</p>}
                   </div>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Tracking & Delivery Compact */}
-          {(order.trackingNumber || order.estimatedDelivery || order.deliveredDate || order.deliveredAt) && (
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-1.5">
-                <FiTruck className="text-primary-600 text-base" />
-                Tracking & Delivery
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {order.trackingNumber && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Tracking Number</p>
-                    <p className="font-semibold text-xs text-gray-800 font-mono">{order.trackingNumber}</p>
-                  </div>
-                )}
-                {order.estimatedDelivery && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1">
-                      <FiClock className="text-xs" />
-                      Est. Delivery
-                    </p>
-                    <p className="font-semibold text-xs text-gray-800">{formatDateTime(order.estimatedDelivery)}</p>
-                  </div>
-                )}
-                {(order.deliveredDate || order.deliveredAt) && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1">
-                      <FiPackage className="text-xs" />
-                      Delivered
-                    </p>
-                    <p className="font-semibold text-xs text-gray-800">
-                      {formatDateTime(order.deliveredDate || order.deliveredAt)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-4">
-          {/* Order Summary */}
+          {/* Order Financial Summary */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-            <h2 className="text-sm font-bold text-gray-800 mb-3">Order Summary</h2>
+            <h2 className="text-sm font-bold text-gray-800 mb-3">Financial Summary</h2>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
@@ -370,11 +470,7 @@ const OrderDetail = () => {
               {discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span className="flex items-center gap-1">
-                    <FiTag className="text-xs" />
-                    Discount
-                    {order.couponCode && (
-                      <span className="text-xs bg-green-100 px-1.5 py-0.5 rounded">({order.couponCode})</span>
-                    )}
+                    <FiTag className="text-xs" /> Discount
                   </span>
                   <span className="font-semibold">-{formatCurrency(discount)}</span>
                 </div>
@@ -396,103 +492,89 @@ const OrderDetail = () => {
             </div>
           </div>
 
-          {/* Order Timeline */}
+          {/* Timeline */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-1.5">
-              <FiCalendar className="text-primary-600 text-base" />
-              Timeline
+              <FiCalendar className="text-primary-600 text-base" /> Timeline
             </h2>
-            <div className="space-y-2">
+            <div className="space-y-2 text-xs">
               <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800">Order Placed</p>
-                  <p className="text-xs text-gray-500">{formatDateTime(order.date)}</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-gray-800">Order Placed</p>
+                  <p className="text-gray-500">{formatDateTime(order.date)}</p>
                 </div>
               </div>
-              {order.status === 'processing' && (
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">Processing</p>
-                    <p className="text-xs text-gray-500">Being prepared</p>
-                  </div>
-                </div>
-              )}
               {order.status === 'shipped' && (
                 <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">Shipped</p>
-                    {order.shippedDate && (
-                      <p className="text-xs text-gray-500">{formatDateTime(order.shippedDate)}</p>
-                    )}
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-800">Shipped (Shiprocket)</p>
+                    {order.shipmentCreatedAt && <p className="text-gray-500">{formatDateTime(order.shipmentCreatedAt)}</p>}
                   </div>
                 </div>
-              )}
-              {order.status === 'delivered' && (
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">Delivered</p>
-                    {(order.deliveredDate || order.deliveredAt) && (
-                      <p className="text-xs text-gray-500">{formatDateTime(order.deliveredDate || order.deliveredAt)}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {order.status === 'cancelled' && (
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">Cancelled</p>
-                    {(order.cancelledDate || order.cancelledAt) && (
-                      <p className="text-xs text-gray-500">{formatDateTime(order.cancelledDate || order.cancelledAt)}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-            <h2 className="text-sm font-bold text-gray-800 mb-3">Quick Actions</h2>
-            <div className="space-y-1.5">
-              {order.trackingNumber && (
-                <button
-                  onClick={() => window.open(`/track-order/${order.id}`, '_blank')}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-semibold"
-                >
-                  <FiTruck className="text-sm" />
-                  Track Order
-                </button>
-              )}
-              {order.customer?.email && (
-                <button
-                  onClick={() => window.location.href = `mailto:${order.customer.email}`}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold"
-                >
-                  <FiMail className="text-sm" />
-                  Email Customer
-                </button>
-              )}
-              {(order.customer?.phone || order.shippingAddress?.phone) && (
-                <button
-                  onClick={() => window.location.href = `tel:${order.customer?.phone || order.shippingAddress?.phone}`}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold"
-                >
-                  <FiPhone className="text-sm" />
-                  Call Customer
-                </button>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal: Live Tracking */}
+      <AnimatePresence>
+        {showTrackingModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100"
+            >
+              <div className="p-4 bg-gray-900 text-white flex justify-between items-center">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <FiTruck className="text-indigo-400" /> Courier Live Tracking Log
+                </h3>
+                <button onClick={() => setShowTrackingModal(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+                  <FiXCircle className="text-lg" />
+                </button>
+              </div>
+
+              <div className="p-5 max-h-[70vh] overflow-y-auto space-y-4">
+                {loadingTracking ? (
+                  <p className="text-center py-6 text-sm text-gray-500">Fetching live status from Shiprocket...</p>
+                ) : trackingData?.events?.length > 0 ? (
+                  <div className="space-y-4 border-l-2 border-indigo-200 ml-3 pl-4">
+                    {trackingData.events.map((event, idx) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-indigo-600 border-2 border-white" />
+                        <p className="text-sm font-semibold text-gray-800">{event.status}</p>
+                        {event.location && <p className="text-xs text-gray-500">{event.location}</p>}
+                        <p className="text-[11px] text-gray-400">{new Date(event.timestamp).toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Shipment Status: {shipment?.status?.toUpperCase() || 'CREATED'}</p>
+                    <p className="text-xs text-gray-500">AWB Code: {activeAwb}</p>
+                    <p className="text-xs text-gray-400">Live events will appear as parcel progresses through courier network.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-gray-50 border-t flex justify-end">
+                <button
+                  onClick={() => setShowTrackingModal(false)}
+                  className="px-4 py-2 text-xs font-semibold bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
 
-export default OrderDetail;
-
+export default AdminOrderDetail;

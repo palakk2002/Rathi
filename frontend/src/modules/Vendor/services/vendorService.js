@@ -201,6 +201,56 @@ export const updateVendorOrderStatus = (orderId, status) =>
     api.patch(`/vendor/orders/${orderId}/status`, { status });
 
 /**
+ * Generate a third-party (Shiprocket) shipment for a vendor's order
+ * @param {string} orderId
+ * @param {{ weight?: number, length?: number, breadth?: number, height?: number, pickup?: object }} [payload]
+ */
+export const createVendorShipment = (orderId, payload = {}) =>
+    api.post(`/vendor/orders/${orderId}/shipment`, payload);
+
+/**
+ * Get shipment details for a vendor order
+ * @param {string} orderId
+ */
+export const getVendorShipment = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/shipment`);
+
+/**
+ * Get live tracking details for a vendor order shipment
+ * @param {string} orderId
+ */
+export const getVendorShipmentTracking = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/shipment/tracking`);
+
+/**
+ * Get shipping label PDF URL for a vendor order shipment
+ * @param {string} orderId
+ */
+export const getVendorShipmentLabel = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/shipment/label`);
+
+/**
+ * Get manifest PDF URL for a vendor order shipment
+ * @param {string} orderId
+ */
+export const getVendorShipmentManifest = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/shipment/manifest`);
+
+/**
+ * Get invoice PDF URL for a vendor order shipment
+ * @param {string} orderId
+ */
+export const getVendorShipmentInvoice = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/shipment/invoice`);
+
+/**
+ * Cancel shipment for a vendor order
+ * @param {string} orderId
+ */
+export const cancelVendorShipment = (orderId) =>
+    api.post(`/vendor/orders/${orderId}/shipment/cancel`);
+
+/**
  * Get customers for the authenticated vendor
  * @param {{ search?: string }} params
  */

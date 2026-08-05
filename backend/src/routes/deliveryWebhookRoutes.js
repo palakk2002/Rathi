@@ -40,7 +40,13 @@ router.post(
         req.on('error', next);
     },
     async (req, res) => {
-        const providerName = String(req.params.provider || '').toLowerCase();
+        let providerName = String(req.params.provider || '').toLowerCase();
+
+        // Shiprocket prohibits keywords like "shiprocket" in webhook URLs.
+        // Map clean aliases to "shiprocket".
+        if (['partner', 'events', 'carrier', 'v1', 'fulfillment'].includes(providerName)) {
+            providerName = 'shiprocket';
+        }
 
         // 1. Guard: provider must be registered
         const knownProviders = getRegisteredProviderNames().filter(

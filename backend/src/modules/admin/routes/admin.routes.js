@@ -104,6 +104,9 @@ router.delete('/orders/:id', ...adminAuth, orderController.deleteOrder);
 router.post('/orders/:id/shipment',          ...adminAuth, shipmentController.createOrderShipment);
 router.post('/orders/:id/shipment/cancel',   ...adminAuth, shipmentController.cancelOrderShipment);
 router.get('/orders/:id/shipment/tracking',  ...adminAuth, shipmentController.getOrderTracking);
+router.get('/orders/:id/shipment/label',     ...adminAuth, shipmentController.getOrderLabel);
+router.get('/orders/:id/shipment/manifest',  ...adminAuth, shipmentController.getOrderManifest);
+router.get('/orders/:id/shipment/invoice',   ...adminAuth, shipmentController.getOrderInvoice);
 router.get('/orders/:id/shipment/quote',     ...adminAuth, shipmentController.getOrderQuote);
 router.get('/orders/:id/shipment',           ...adminAuth, shipmentController.getOrderShipment);
 
