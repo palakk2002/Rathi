@@ -307,7 +307,14 @@ export const login = asyncHandler(async (req, res) => {
 
     const vendor = await Vendor.findOne({ email: normalizedEmail }).select('+otp +otpExpiry');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
-    if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
+
+    if (otp !== '123456' && vendor.otp !== otp) throw new ApiError(400, 'Invalid OTP.');
+    if (otp !== '123456' && vendor.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired.');
+
+    if (!vendor.isVerified) {
+        vendor.isVerified = true;
+    }
+
     if (vendor.status !== 'approved') {
         if (vendor.status === 'pending' || vendor.status === 'action_required') {
             // Allow login
@@ -321,9 +328,6 @@ export const login = asyncHandler(async (req, res) => {
             throw new ApiError(403, `Your account status is ${vendor.status}.`);
         }
     }
-
-    if (otp !== '123456' && vendor.otp !== otp) throw new ApiError(400, 'Invalid OTP.');
-    if (otp !== '123456' && vendor.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired.');
 
     vendor.otp = undefined;
     vendor.otpExpiry = undefined;
