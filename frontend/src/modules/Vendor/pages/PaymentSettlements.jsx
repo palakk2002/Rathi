@@ -122,7 +122,10 @@ const PaymentSettlements = () => {
   };
 
   const handleBankInputChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+    if (name === 'ifscCode') {
+      value = value.toUpperCase().replace(/\s/g, '');
+    }
     setBankForm(prev => ({ ...prev, [name]: value }));
   };
 
@@ -136,6 +139,9 @@ const PaymentSettlements = () => {
   const handleBankSubmit = async (e) => {
     e.preventDefault();
 
+    // Normalize IFSC Code
+    const normalizedIfsc = (bankForm.ifscCode || '').trim().toUpperCase();
+
     // Confirm Account Number Match check
     if (bankForm.accountNumber !== bankForm.confirmAccountNumber) {
       return toast.error('Account numbers do not match.');
@@ -143,7 +149,7 @@ const PaymentSettlements = () => {
 
     // IFSC check
     const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    if (!ifscRegex.test(bankForm.ifscCode)) {
+    if (!ifscRegex.test(normalizedIfsc)) {
       return toast.error('Invalid IFSC Code format (e.g. SBIN0001234)');
     }
 
@@ -162,6 +168,7 @@ const PaymentSettlements = () => {
 
       await updateVendorBankDetailsNew({
         ...bankForm,
+        ifscCode: normalizedIfsc,
         cancelledCheque: chequeUrl,
       });
 

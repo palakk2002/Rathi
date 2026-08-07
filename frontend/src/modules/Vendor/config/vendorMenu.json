@@ -65,6 +65,13 @@
                      ]
     },
     {
+        "title":  "Pickup Locations",
+        "route":  "/vendor/pickup-locations",
+        "children":  [
+
+                     ]
+    },
+    {
         "title":  "Customers",
         "route":  "/vendor/customers",
         "children":  [

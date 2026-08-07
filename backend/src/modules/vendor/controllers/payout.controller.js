@@ -117,9 +117,11 @@ export const updateVendorBankDetails = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Account numbers do not match.');
     }
 
+    const normalizedIfsc = String(ifscCode).trim().toUpperCase();
+
     // IFSC validation (Standard Indian IFSC format)
     const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    if (!ifscRegex.test(ifscCode)) {
+    if (!ifscRegex.test(normalizedIfsc)) {
         throw new ApiError(400, 'Invalid IFSC code format.');
     }
 
@@ -127,7 +129,7 @@ export const updateVendorBankDetails = asyncHandler(async (req, res) => {
         'bankDetails.accountName': accountName,
         'bankDetails.accountNumber': accountNumber,
         'bankDetails.bankName': bankName,
-        'bankDetails.ifscCode': ifscCode,
+        'bankDetails.ifscCode': normalizedIfsc,
         'bankDetails.branchName': branchName || '',
         'bankDetails.upiId': upiId || '',
         'bankDetails.cancelledCheque': cancelledCheque || '',
