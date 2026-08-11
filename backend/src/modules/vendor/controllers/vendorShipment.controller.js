@@ -51,7 +51,7 @@ async function resolveSellerPickupLocation(vendorId) {
 
     if (pickup) {
         return {
-            name:    pickup.name    || 'Primary Warehouse',
+            name:    pickup.name    || process.env.PICKUP_NAME || 'work',
             phone:   pickup.phone   || '',
             address: pickup.address || '',
             city:    pickup.city    || '',
@@ -62,13 +62,15 @@ async function resolveSellerPickupLocation(vendorId) {
 
     // 3. Fallback to Vendor profile primary address
     const vendor = await Vendor.findById(vendorId).lean();
+    const vendorAddr = typeof vendor?.address === 'object' && vendor?.address !== null ? vendor.address : {};
+    const street = vendorAddr.street || (typeof vendor?.address === 'string' ? vendor.address : '') || vendor?.storeDescription || '';
     return {
-        name:    vendor?.storeName || vendor?.name || 'Primary Warehouse',
+        name:    process.env.PICKUP_NAME || vendor?.pickupLocation || vendor?.storeName || 'work',
         phone:   vendor?.phone || '',
-        address: vendor?.address || '',
-        city:    vendor?.city || '',
-        state:   vendor?.state || '',
-        pincode: vendor?.pincode || vendor?.zipCode || '',
+        address: street || '',
+        city:    vendorAddr.city || vendor?.city || '',
+        state:   vendorAddr.state || vendor?.state || '',
+        pincode: vendorAddr.zipCode || vendor?.zipCode || vendor?.pincode || '',
     };
 }
 
@@ -301,7 +303,101 @@ export const getVendorShipmentLabel = asyncHandler(async (req, res) => {
         }
     }
 
-    if (!labelUrl) throw new ApiError(404, 'Shipping label not available yet.');
+    if (!labelUrl) {
+        // Fallback: Generate a standard printable shipping label HTML data URI
+        const pickup = await resolveSellerPickupLocation(vendorId);
+        const vendor = await Vendor.findById(vendorId).lean();
+        const shippingAddr = order.shippingAddress || {};
+        const itemsToPrint = (order.vendorItems?.find(vi => String(vi.vendorId) === String(vendorId))?.items) || order.items || [];
+        const itemsHtml = itemsToPrint.map((item, i) => `
+            <tr>
+                <td style="padding: 6px; border-bottom: 1px solid #eee;">${item.name || `Item ${i+1}`}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity || 1}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price || 0}</td>
+            </tr>
+        `).join('');
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Shipping Label - ${order.orderId}</title>
+    <style>
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f3f4f6; }
+        .label-card { max-width: 550px; margin: 0 auto; background: #ffffff; border: 2px dashed #111827; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111827; padding-bottom: 12px; margin-bottom: 16px; }
+        .barcode { text-align: center; font-family: monospace; font-size: 22px; font-weight: bold; letter-spacing: 4px; border: 1px solid #000; padding: 8px; margin: 12px 0; background: #f9fafb; border-radius: 4px; }
+        .section { margin-bottom: 16px; }
+        .title { font-size: 11px; text-transform: uppercase; color: #4b5563; font-weight: bold; margin-bottom: 4px; letter-spacing: 0.5px; }
+        .content { font-size: 13px; line-height: 1.5; color: #111827; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+        .btn-print { display: block; width: 100%; max-width: 550px; margin: 16px auto; padding: 12px; background: #7c3aed; color: white; text-align: center; font-weight: bold; text-decoration: none; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; }
+        @media print { .btn-print { display: none; } body { padding: 0; background: #fff; } .label-card { border: 2px solid #000; box-shadow: none; } }
+    </style>
+</head>
+<body>
+    <button class="btn-print" onclick="window.print()">🖨️ Print Shipping Label</button>
+    <div class="label-card">
+        <div class="header">
+            <div>
+                <h2 style="margin:0; font-size: 18px; font-weight: 800; color: #111827;">SHIPPING LABEL</h2>
+                <p style="margin:4px 0 0 0; color:#6b7280; font-size:12px;">Order ID: <strong>#${order.orderId}</strong></p>
+            </div>
+            <div style="text-align: right;">
+                <span style="display:inline-block; padding:4px 10px; background:#e0e7ff; color:#3730a3; font-weight:bold; border-radius:6px; font-size:11px;">
+                    ${String(order.paymentMethod || 'PREPAID').toUpperCase()}
+                </span>
+            </div>
+        </div>
+
+        <div class="barcode">*${order.orderId}*</div>
+
+        <div class="grid">
+            <div class="section">
+                <div class="title">SHIP FROM (SELLER):</div>
+                <div class="content">
+                    <strong>${pickup?.name || vendor?.storeName || vendor?.name || 'Seller Store'}</strong><br/>
+                    ${pickup?.address || ''}<br/>
+                    ${pickup?.city ? pickup.city + ', ' : ''}${pickup?.state || ''} ${pickup?.pincode ? '- ' + pickup.pincode : ''}<br/>
+                    Phone: ${pickup?.phone || vendor?.phone || 'N/A'}
+                </div>
+            </div>
+            <div class="section">
+                <div class="title">SHIP TO (CUSTOMER):</div>
+                <div class="content">
+                    <strong>${shippingAddr.name || 'Customer'}</strong><br/>
+                    ${shippingAddr.address || ''}<br/>
+                    ${shippingAddr.city ? shippingAddr.city + ', ' : ''}${shippingAddr.state || ''} - <strong>${shippingAddr.zipCode || ''}</strong><br/>
+                    Phone: ${shippingAddr.phone || 'N/A'}
+                </div>
+            </div>
+        </div>
+
+        <div class="section" style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
+            <div class="title">PACKAGE ITEMS:</div>
+            <table class="items-table">
+                <thead>
+                    <tr style="background: #f9fafb; text-align: left;">
+                        <th style="padding: 6px;">Item</th>
+                        <th style="padding: 6px; text-align: center;">Qty</th>
+                        <th style="padding: 6px; text-align: right;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 16px; text-align: right; font-weight: bold; font-size: 14px; border-top: 1px solid #e5e7eb; padding-top: 8px;">
+            Total: ₹${order.total || order.subtotal || 0}
+        </div>
+    </div>
+</body>
+</html>`;
+        labelUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+    }
+
     res.status(200).json(new ApiResponse(200, { labelUrl }, 'Shipping label fetched.'));
 });
 

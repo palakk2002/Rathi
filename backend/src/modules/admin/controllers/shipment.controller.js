@@ -50,7 +50,7 @@ function buildContext(order, overrides = {}) {
         orderId:         order.orderId,
         orderMongoId:    String(order._id),
         pickup: {
-            name:    process.env.PICKUP_NAME    || 'Warehouse',
+            name:    process.env.PICKUP_NAME    || 'work',
             phone:   process.env.PICKUP_PHONE   || '',
             address: process.env.PICKUP_ADDRESS || '',
             city:    process.env.PICKUP_CITY    || '',

@@ -239,19 +239,49 @@ const VendorDashboard = () => {
 
       {/* Bank Details Warning Banner */}
       {vendor && vendor.bankDetails?.status !== 'approved' && (
-        <div className="p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-orange-50 border-orange-200 text-orange-900 shadow-sm">
+        <div className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm ${
+          vendor.bankDetails?.status === 'pending'
+            ? 'bg-blue-50 border-blue-200 text-blue-900'
+            : vendor.bankDetails?.status === 'action_required' || vendor.bankDetails?.status === 'rejected'
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
+              : 'bg-orange-50 border-orange-200 text-orange-900'
+        }`}>
           <div className="space-y-1">
-            <h3 className="font-bold text-base flex items-center gap-2 text-orange-800">
-              ⚠️ Payout Setup Required
+            <h3 className={`font-bold text-base flex items-center gap-2 ${
+              vendor.bankDetails?.status === 'pending'
+                ? 'text-blue-800'
+                : vendor.bankDetails?.status === 'action_required' || vendor.bankDetails?.status === 'rejected'
+                  ? 'text-amber-800'
+                  : 'text-orange-800'
+            }`}>
+              {vendor.bankDetails?.status === 'pending'
+                ? '⏳ Bank Details Under Verification'
+                : vendor.bankDetails?.status === 'action_required' || vendor.bankDetails?.status === 'rejected'
+                  ? '⚠️ Bank Details Action Required'
+                  : '⚠️ Payout Setup Required'}
             </h3>
-            <p className="text-sm text-orange-700">
-              Complete your Bank Details to receive payouts. Currently, settlements are placed ON HOLD until details are verified.
+            <p className="text-sm">
+              {vendor.bankDetails?.status === 'pending'
+                ? 'Your bank details have been submitted and are under review by Admin. Settlements will be processed once verified.'
+                : vendor.bankDetails?.status === 'action_required' || vendor.bankDetails?.status === 'rejected'
+                  ? `Remarks: ${vendor.bankDetails?.remarks || 'Please update your bank details.'}`
+                  : 'Complete your Bank Details to receive payouts. Currently, settlements are placed ON HOLD until details are verified.'}
             </p>
           </div>
           <button
             onClick={() => navigate('/vendor/payment-settlements/bank-details')}
-            className="px-4 py-2 text-sm font-semibold rounded-xl whitespace-nowrap bg-orange-600 text-white hover:bg-orange-700 shadow-sm transition-colors">
-            Complete Now
+            className={`px-4 py-2 text-sm font-semibold rounded-xl whitespace-nowrap shadow-sm transition-colors text-white ${
+              vendor.bankDetails?.status === 'pending'
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : vendor.bankDetails?.status === 'action_required' || vendor.bankDetails?.status === 'rejected'
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-orange-600 hover:bg-orange-700'
+            }`}>
+            {vendor.bankDetails?.status === 'pending'
+              ? 'View Details'
+              : vendor.bankDetails?.status === 'action_required' || vendor.bankDetails?.status === 'rejected'
+                ? 'Update Details'
+                : 'Complete Now'}
           </button>
         </div>
       )}
@@ -465,12 +495,14 @@ const VendorDashboard = () => {
                 <h2 className="text-lg font-bold text-gray-800 mb-4">Profile Completion</h2>
                 <div className="flex items-center gap-4 mb-5">
                   <div className="w-16 h-16 rounded-full border-4 border-purple-500 flex items-center justify-center font-bold text-purple-700 text-lg flex-shrink-0">
-                    {vendor?.bankDetails?.status === 'approved' ? 100 : 80}%
+                    {['approved', 'pending'].includes(vendor?.bankDetails?.status) ? 100 : 80}%
                   </div>
                   <div className="text-xs sm:text-sm text-gray-600">
                     {vendor?.bankDetails?.status === 'approved'
                       ? "Your profile is 100% complete. Payouts are fully active!"
-                      : "Complete bank verification to activate payouts."}
+                      : vendor?.bankDetails?.status === 'pending'
+                        ? "Profile 100% submitted! Bank details are under admin verification."
+                        : "Complete bank verification to activate payouts."}
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -489,9 +521,13 @@ const VendorDashboard = () => {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Bank Details</span>
                     {vendor?.bankDetails?.status === 'approved' ? (
-                      <span className="text-green-600 font-bold">✔</span>
+                      <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-0.5 rounded border border-green-200">✔ Verified</span>
+                    ) : vendor?.bankDetails?.status === 'pending' ? (
+                      <span className="text-blue-700 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded border border-blue-200">⏳ Pending Review</span>
+                    ) : vendor?.bankDetails?.status === 'action_required' || vendor?.bankDetails?.status === 'rejected' ? (
+                      <span className="text-amber-700 font-bold text-xs bg-amber-50 px-2 py-0.5 rounded border border-amber-200">⚠️ Needs Action</span>
                     ) : (
-                      <span className="text-red-500 font-bold">❌</span>
+                      <span className="text-red-500 font-bold text-xs bg-red-50 px-2 py-0.5 rounded border border-red-200">❌ Not Submitted</span>
                     )}
                   </div>
                 </div>
@@ -499,8 +535,16 @@ const VendorDashboard = () => {
               {vendor?.bankDetails?.status !== 'approved' && (
                 <button
                   onClick={() => navigate('/vendor/payment-settlements/bank-details')}
-                  className="w-full mt-5 py-2 text-sm font-semibold rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors">
-                  Add Bank Details
+                  className={`w-full mt-5 py-2 text-sm font-semibold rounded-xl text-white transition-colors ${
+                    vendor?.bankDetails?.status === 'pending'
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  }`}>
+                  {vendor?.bankDetails?.status === 'pending'
+                    ? 'View Bank Details'
+                    : vendor?.bankDetails?.status === 'action_required' || vendor?.bankDetails?.status === 'rejected'
+                      ? 'Update Bank Details'
+                      : 'Add Bank Details'}
                 </button>
               )}
             </div>

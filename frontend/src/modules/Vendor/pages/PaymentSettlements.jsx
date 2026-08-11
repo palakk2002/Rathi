@@ -19,6 +19,7 @@ import {
   uploadVendorImage 
 } from '../services/vendorService';
 import { formatPrice } from '../../../shared/utils/helpers';
+import { useVendorAuthStore } from '../store/vendorAuthStore';
 
 const PaymentSettlements = () => {
   const [activeTab, setActiveTab] = useState('bank');
@@ -171,6 +172,18 @@ const PaymentSettlements = () => {
         ifscCode: normalizedIfsc,
         cancelledCheque: chequeUrl,
       });
+
+      // Sync fresh vendor profile into auth store
+      try {
+        const { getVendorProfile } = await import('../services/vendorService');
+        const profileRes = await getVendorProfile();
+        const profile = profileRes?.data ?? profileRes;
+        if (profile) {
+          useVendorAuthStore.setState({ vendor: profile });
+        }
+      } catch (e) {
+        console.warn('Failed to sync profile after bank submission', e);
+      }
 
       toast.success('Bank details submitted successfully!');
       fetchBankDetails();
