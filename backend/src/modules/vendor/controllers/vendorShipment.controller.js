@@ -42,6 +42,8 @@ async function findVendorOrder(paramId, vendorId) {
 
 /** Resolve Seller's registered pickup warehouse location */
 async function resolveSellerPickupLocation(vendorId) {
+    const vendor = await Vendor.findById(vendorId).lean();
+
     // 1. Try default registered PickupLocation
     let pickup = await PickupLocation.findOne({ vendorId, isDefault: true }).lean();
     if (!pickup) {
@@ -51,17 +53,17 @@ async function resolveSellerPickupLocation(vendorId) {
 
     if (pickup) {
         return {
-            name:    pickup.name    || process.env.PICKUP_NAME || 'work',
-            phone:   pickup.phone   || '',
+            name:    pickup.name    || process.env.PICKUP_NAME || vendor?.pickupLocation || vendor?.storeName || 'work',
+            phone:   pickup.phone   || vendor?.phone || '',
             address: pickup.address || '',
             city:    pickup.city    || '',
             state:   pickup.state   || '',
             pincode: pickup.zipCode || '',
+            email:   vendor?.email  || '',
         };
     }
 
     // 3. Fallback to Vendor profile primary address
-    const vendor = await Vendor.findById(vendorId).lean();
     const vendorAddr = typeof vendor?.address === 'object' && vendor?.address !== null ? vendor.address : {};
     const street = vendorAddr.street || (typeof vendor?.address === 'string' ? vendor.address : '') || vendor?.storeDescription || '';
     return {
@@ -71,6 +73,7 @@ async function resolveSellerPickupLocation(vendorId) {
         city:    vendorAddr.city || vendor?.city || '',
         state:   vendorAddr.state || vendor?.state || '',
         pincode: vendorAddr.zipCode || vendor?.zipCode || vendor?.pincode || '',
+        email:   vendor?.email || '',
     };
 }
 

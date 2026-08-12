@@ -70,6 +70,25 @@ export const shiprocketProvider = {
     async createShipment(context) {
         const payload = buildOrderPayload(context);
 
+        // Step 0: Register pickup location on Shiprocket if provided
+        if (context.pickup) {
+            try {
+                await shiprocketRequest('POST', '/settings/add/pickup', {
+                    pickup_location: String(context.pickup.name || 'Primary'),
+                    name:            String(context.pickup.name || 'Primary'),
+                    email:           String(context.pickup.email || 'vendor@example.com'),
+                    phone:           String(context.pickup.phone || ''),
+                    address:         String(context.pickup.address || ''),
+                    city:            String(context.pickup.city || ''),
+                    state:           String(context.pickup.state || ''),
+                    country:         'India',
+                    pin_code:        String(context.pickup.pincode || ''),
+                });
+            } catch (err) {
+                console.warn('[shiprocketProvider] Auto-registering pickup location returned/warned:', err.message);
+            }
+        }
+
         // Step 1: Create order on Shiprocket
         const orderRes = await shiprocketRequest('POST', '/orders/create/adhoc', payload);
         const shipmentId  = orderRes?.shipment_id;
