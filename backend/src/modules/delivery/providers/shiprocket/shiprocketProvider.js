@@ -17,6 +17,13 @@ function getChannelId() {
     return process.env.SHIPROCKET_CHANNEL_ID || null;
 }
 
+function cleanPickupNickname(name) {
+    if (!name) return 'Primary';
+    // Remove special characters, keep letters, numbers, hyphens, underscores and spaces
+    let clean = name.replace(/[^a-zA-Z0-9\-_ ]/g, '');
+    return clean.slice(0, 36).trim();
+}
+
 /** Build the Shiprocket order payload from a ShipmentContext object. */
 function buildOrderPayload(context) {
     const {
@@ -57,7 +64,7 @@ function buildOrderPayload(context) {
         height:               Number(context.height  || 5),
         weight:               Number(weight          || 0.5),
         order_items:          orderItems,
-        pickup_location:      String(pickup.name     || 'Primary'),
+        pickup_location:      cleanPickupNickname(pickup.name || 'Primary'),
     };
 }
 
@@ -73,12 +80,12 @@ export const shiprocketProvider = {
         // Step 0: Register pickup location on Shiprocket if provided
         if (context.pickup) {
             try {
-                await shiprocketRequest('POST', '/settings/add/pickup', {
-                    pickup_location: String(context.pickup.name || 'Primary'),
-                    name:            String(context.pickup.name || 'Primary'),
+                await shiprocketRequest('POST', '/settings/company/addpickup', {
+                    pickup_location: cleanPickupNickname(context.pickup.name || 'Primary'),
+                    name:            String(context.pickup.name || 'Primary').slice(0, 36),
                     email:           String(context.pickup.email || 'vendor@example.com'),
-                    phone:           String(context.pickup.phone || ''),
-                    address:         String(context.pickup.address || ''),
+                    phone:           String(context.pickup.phone || '').replace(/\D/g, '').slice(0, 10),
+                    address:         String(context.pickup.address || '').slice(0, 80),
                     city:            String(context.pickup.city || ''),
                     state:           String(context.pickup.state || ''),
                     country:         'India',
