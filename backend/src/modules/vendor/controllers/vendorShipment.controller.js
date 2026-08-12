@@ -53,7 +53,7 @@ async function resolveSellerPickupLocation(vendorId) {
 
     if (pickup) {
         return {
-            name:    pickup.name    || process.env.PICKUP_NAME || vendor?.pickupLocation || vendor?.storeName || 'work',
+            name:    pickup.name    || process.env.PICKUP_NAME || 'work',
             phone:   pickup.phone   || vendor?.phone || '',
             address: pickup.address || '',
             city:    pickup.city    || '',
@@ -67,7 +67,7 @@ async function resolveSellerPickupLocation(vendorId) {
     const vendorAddr = typeof vendor?.address === 'object' && vendor?.address !== null ? vendor.address : {};
     const street = vendorAddr.street || (typeof vendor?.address === 'string' ? vendor.address : '') || vendor?.storeDescription || '';
     return {
-        name:    process.env.PICKUP_NAME || vendor?.pickupLocation || vendor?.storeName || 'work',
+        name:    process.env.PICKUP_NAME || 'work',
         phone:   vendor?.phone || '',
         address: street || '',
         city:    vendorAddr.city || vendor?.city || '',
