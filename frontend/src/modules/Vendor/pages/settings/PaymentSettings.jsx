@@ -27,22 +27,41 @@ const PaymentSettings = () => {
   const [activeSection, setActiveSection] = useState('bank');
 
   useEffect(() => {
-    if (vendor && vendor.bankDetails) {
-      setFormData({
-        bankDetails: vendor.bankDetails || {
-          accountName: '',
-          accountNumber: '',
-          ifscCode: '',
-          bankName: '',
+    const fetchDetails = async () => {
+      try {
+        const { getVendorBankDetails } = await import('../../services/vendorService');
+        const res = await getVendorBankDetails();
+        const bData = res?.data ?? res;
+        if (bData) {
+          setFormData(prev => ({
+            ...prev,
+            bankDetails: {
+              accountName: bData.accountName || prev.bankDetails.accountName || '',
+              accountNumber: bData.accountNumber || prev.bankDetails.accountNumber || '',
+              ifscCode: bData.ifscCode || prev.bankDetails.ifscCode || '',
+              bankName: bData.bankName || prev.bankDetails.bankName || '',
+            }
+          }));
+        }
+      } catch (err) {
+        console.warn('Failed to load bank details in PaymentSettings:', err);
+      }
+    };
+
+    if (vendor) {
+      setFormData(prev => ({
+        ...prev,
+        bankDetails: {
+          accountName: vendor.bankDetails?.accountName || prev.bankDetails.accountName || '',
+          accountNumber: vendor.bankDetails?.accountNumber || prev.bankDetails.accountNumber || '',
+          ifscCode: vendor.bankDetails?.ifscCode || prev.bankDetails.ifscCode || '',
+          bankName: vendor.bankDetails?.bankName || prev.bankDetails.bankName || '',
         },
-        paymentMethods: vendor.paymentMethods || {
-          bankTransfer: true,
-          upi: false,
-          paypal: false,
-        },
-        upiId: vendor.upiId || '',
-        paypalEmail: vendor.paypalEmail || '',
-      });
+        paymentMethods: vendor.paymentMethods || prev.paymentMethods,
+        upiId: vendor.upiId || prev.upiId || '',
+        paypalEmail: vendor.paypalEmail || prev.paypalEmail || '',
+      }));
+      fetchDetails();
     }
   }, [vendor]);
 
@@ -77,13 +96,61 @@ const PaymentSettings = () => {
     if (!vendor) return;
 
     try {
+      const trimmedAccountName = (formData.bankDetails.accountName || '').trim();
+      const trimmedAccountNumber = (formData.bankDetails.accountNumber || '').trim();
+      const trimmedBankName = (formData.bankDetails.bankName || '').trim();
+      const formattedIfsc = (formData.bankDetails.ifscCode || '').trim().toUpperCase();
+
+      if (!trimmedAccountName || !trimmedAccountNumber || !trimmedBankName || !formattedIfsc) {
+        return toast.error('Account Holder Name, Account Number, Bank Name, and IFSC Code are required.');
+      }
+
+      const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+      if (!ifscRegex.test(formattedIfsc)) {
+        return toast.error('Invalid IFSC Code format (e.g. BARB0JODHPU)');
+      }
+
       // Save bank details via dedicated endpoint
-      await updateVendorBankDetails({
-        accountName: formData.bankDetails.accountName,
-        accountNumber: formData.bankDetails.accountNumber,
-        ifscCode: formData.bankDetails.ifscCode,
-        bankName: formData.bankDetails.bankName,
+      const updateRes = await updateVendorBankDetails({
+        accountName: trimmedAccountName,
+        accountNumber: trimmedAccountNumber,
+        confirmAccountNumber: trimmedAccountNumber,
+        ifscCode: formattedIfsc,
+        bankName: trimmedBankName,
       });
+
+      const updatedVendor = updateRes?.data ?? updateRes;
+
+      // Update state directly so inputs remain filled
+      setFormData(prev => ({
+        ...prev,
+        bankDetails: {
+          accountName: trimmedAccountName,
+          accountNumber: trimmedAccountNumber,
+          ifscCode: formattedIfsc,
+          bankName: trimmedBankName,
+        }
+      }));
+
+      // Fetch fresh bank details from server
+      try {
+        const { getVendorBankDetails } = await import('../../services/vendorService');
+        const bankRes = await getVendorBankDetails();
+        const bankPayload = bankRes?.data ?? bankRes;
+        if (bankPayload && (bankPayload.accountName || bankPayload.accountNumber)) {
+          setFormData(prev => ({
+            ...prev,
+            bankDetails: {
+              accountName: bankPayload.accountName || trimmedAccountName,
+              accountNumber: bankPayload.accountNumber || trimmedAccountNumber,
+              ifscCode: bankPayload.ifscCode || formattedIfsc,
+              bankName: bankPayload.bankName || trimmedBankName,
+            }
+          }));
+        }
+      } catch (e) {
+        console.warn('Failed to re-fetch bank details', e);
+      }
 
       // Sync fresh vendor profile into auth store
       try {
@@ -91,7 +158,18 @@ const PaymentSettings = () => {
         const profileRes = await getVendorProfile();
         const profile = profileRes?.data ?? profileRes;
         if (profile) {
-          useVendorAuthStore.setState({ vendor: profile });
+          useVendorAuthStore.setState({ 
+            vendor: {
+              ...profile,
+              bankDetails: {
+                ...(profile.bankDetails || {}),
+                accountName: trimmedAccountName,
+                accountNumber: trimmedAccountNumber,
+                ifscCode: formattedIfsc,
+                bankName: trimmedBankName,
+              }
+            } 
+          });
         }
       } catch (e) {
         console.warn('Failed to sync profile after bank submission', e);

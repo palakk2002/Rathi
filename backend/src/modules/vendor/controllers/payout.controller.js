@@ -107,34 +107,38 @@ export const updateVendorBankDetails = asyncHandler(async (req, res) => {
         gstNumber,
     } = req.body;
 
+    const cleanAccountName = String(accountName || '').trim();
+    const cleanAccountNumber = String(accountNumber || '').trim();
+    const cleanConfirmAccountNumber = confirmAccountNumber ? String(confirmAccountNumber).trim() : cleanAccountNumber;
+    const cleanBankName = String(bankName || '').trim();
+    const normalizedIfsc = String(ifscCode || '').trim().toUpperCase();
+
     // Required fields check
-    if (!accountName || !accountNumber || !confirmAccountNumber || !bankName || !ifscCode) {
-        throw new ApiError(400, 'Account Name, Account Number, Confirm Account Number, Bank Name, and IFSC Code are required.');
+    if (!cleanAccountName || !cleanAccountNumber || !cleanBankName || !normalizedIfsc) {
+        throw new ApiError(400, 'Account Name, Account Number, Bank Name, and IFSC Code are required.');
     }
 
-    // Account Number match check
-    if (accountNumber !== confirmAccountNumber) {
+    // Account Number match check if confirmAccountNumber is explicitly provided
+    if (confirmAccountNumber && cleanAccountNumber !== cleanConfirmAccountNumber) {
         throw new ApiError(400, 'Account numbers do not match.');
     }
-
-    const normalizedIfsc = String(ifscCode).trim().toUpperCase();
 
     // IFSC validation (Standard Indian IFSC format)
     const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
     if (!ifscRegex.test(normalizedIfsc)) {
-        throw new ApiError(400, 'Invalid IFSC code format.');
+        throw new ApiError(400, 'Invalid IFSC code format (e.g., BARB0JODHPU).');
     }
 
     const updates = {
-        'bankDetails.accountName': accountName,
-        'bankDetails.accountNumber': accountNumber,
-        'bankDetails.bankName': bankName,
+        'bankDetails.accountName': cleanAccountName,
+        'bankDetails.accountNumber': cleanAccountNumber,
+        'bankDetails.bankName': cleanBankName,
         'bankDetails.ifscCode': normalizedIfsc,
-        'bankDetails.branchName': branchName || '',
-        'bankDetails.upiId': upiId || '',
-        'bankDetails.cancelledCheque': cancelledCheque || '',
-        'bankDetails.panNumber': panNumber || '',
-        'bankDetails.gstNumber': gstNumber || '',
+        'bankDetails.branchName': String(branchName || '').trim(),
+        'bankDetails.upiId': String(upiId || '').trim(),
+        'bankDetails.cancelledCheque': String(cancelledCheque || '').trim(),
+        'bankDetails.panNumber': String(panNumber || '').trim().toUpperCase(),
+        'bankDetails.gstNumber': String(gstNumber || '').trim().toUpperCase(),
         'bankDetails.status': 'pending', // Pending Verification
         'bankDetails.remarks': '',
         'bankDetails.submittedAt': new Date(),

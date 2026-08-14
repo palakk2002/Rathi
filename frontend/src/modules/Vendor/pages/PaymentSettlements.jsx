@@ -140,11 +140,18 @@ const PaymentSettlements = () => {
   const handleBankSubmit = async (e) => {
     e.preventDefault();
 
-    // Normalize IFSC Code
+    const trimmedAccountName = (bankForm.accountName || '').trim();
+    const trimmedAccountNumber = (bankForm.accountNumber || '').trim();
+    const trimmedConfirmAccountNumber = (bankForm.confirmAccountNumber || '').trim();
+    const trimmedBankName = (bankForm.bankName || '').trim();
     const normalizedIfsc = (bankForm.ifscCode || '').trim().toUpperCase();
 
+    if (!trimmedAccountName || !trimmedAccountNumber || !trimmedConfirmAccountNumber || !trimmedBankName || !normalizedIfsc) {
+      return toast.error('Account Name, Account Number, Confirm Account Number, Bank Name, and IFSC Code are required.');
+    }
+
     // Confirm Account Number Match check
-    if (bankForm.accountNumber !== bankForm.confirmAccountNumber) {
+    if (trimmedAccountNumber !== trimmedConfirmAccountNumber) {
       return toast.error('Account numbers do not match.');
     }
 
@@ -169,6 +176,10 @@ const PaymentSettlements = () => {
 
       await updateVendorBankDetailsNew({
         ...bankForm,
+        accountName: trimmedAccountName,
+        accountNumber: trimmedAccountNumber,
+        confirmAccountNumber: trimmedConfirmAccountNumber,
+        bankName: trimmedBankName,
         ifscCode: normalizedIfsc,
         cancelledCheque: chequeUrl,
       });
