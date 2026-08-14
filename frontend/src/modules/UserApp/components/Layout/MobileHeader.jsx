@@ -9,6 +9,7 @@ import {
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
+import { useLocationStore } from "../../../../shared/store/locationStore";
 import raathiLogo from "../../../../assets/raathifinalogo.png";
 const appLogo = {
   src: raathiLogo,
@@ -54,6 +55,12 @@ const MobileHeader = () => {
     (state) => state.cartAnimationTrigger
   );
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { locationName, isLoading: isLocationLoading, fetchCurrentLocation } = useLocationStore();
+
+  // Fetch location automatically on header mount
+  useEffect(() => {
+    fetchCurrentLocation();
+  }, [fetchCurrentLocation]);
 
   // Measure top row height
   useEffect(() => {
@@ -249,14 +256,26 @@ const MobileHeader = () => {
                 }}
               />
             </Link>
-            <div className="flex flex-col justify-center">
+            <div
+              className="flex flex-col justify-center cursor-pointer select-none max-w-[170px]"
+              onClick={() => {
+                if (isAuthenticated) {
+                  navigate("/addresses");
+                } else {
+                  navigate("/login", { state: { from: "/addresses" } });
+                }
+              }}
+              title="Click to select or manage address"
+            >
               <div className="flex items-center gap-0.5 leading-none">
                 <span className="text-orange-500 font-bold text-sm">⚡</span>
                 <span className="text-gray-950 font-black text-xs tracking-wider uppercase">10 MINUTES</span>
               </div>
-              <div className="flex items-center gap-0.5 text-gray-550 text-[9px] font-bold mt-1 ml-0.5">
-                <span>Police Quarters, Belgaum</span>
-                <span className="text-[7px] text-gray-400">▼</span>
+              <div className="flex items-center gap-0.5 text-gray-550 text-[9px] font-bold mt-1 ml-0.5 max-w-full">
+                <span className="truncate max-w-[150px]">
+                  {isLocationLoading ? 'Fetching location...' : locationName}
+                </span>
+                <span className="text-[7px] text-gray-400 flex-shrink-0">▼</span>
               </div>
             </div>
           </div>

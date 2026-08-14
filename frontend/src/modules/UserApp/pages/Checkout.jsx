@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   FiMapPin,
@@ -18,6 +19,7 @@ import { useCartStore } from "../../../shared/store/useStore";
 import { useAuthStore } from "../../../shared/store/authStore";
 import { useAddressStore } from "../../../shared/store/addressStore";
 import { useOrderStore } from "../../../shared/store/orderStore";
+import { useLocationStore } from "../../../shared/store/locationStore";
 import { formatPrice } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
 import toast from "react-hot-toast";
@@ -32,6 +34,7 @@ const MobileCheckout = () => {
   const { items, getTotal, clearCart, getItemsByVendor } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
   const { addresses, getDefaultAddress, addAddress, fetchAddresses } = useAddressStore();
+  const setLocationFromAddress = useLocationStore((state) => state.setLocationFromAddress);
   const { createOrder, verifyRazorpayPayment, cancelOrder } = useOrderStore();
 
   // Group items by vendor
@@ -295,6 +298,7 @@ const MobileCheckout = () => {
 
   const handleSelectAddress = (address) => {
     setSelectedAddressId(address.id);
+    setLocationFromAddress(address);
     setFormData({
       ...formData,
       name: address.fullName,
@@ -311,6 +315,7 @@ const MobileCheckout = () => {
     try {
       const newAddress = await addAddress(addressData);
       handleSelectAddress(newAddress);
+      setLocationFromAddress(newAddress);
       setShowAddressForm(false);
       toast.success("Address added and selected!");
     } catch (error) {
@@ -1008,20 +1013,20 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
     onSubmit(formData);
   };
 
-  return (
+  const modalContent = (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 z-50 flex items-end"
+      className="fixed inset-0 bg-black/60 z-[10000] flex items-end sm:items-center sm:justify-center p-0 sm:p-4 overflow-hidden"
       onClick={onCancel}>
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl p-6 w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
+        className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-lg max-h-[85vh] sm:max-h-[90vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <h3 className="text-xl font-bold text-gray-800">Add New Address</h3>
           <button
             onClick={onCancel}
@@ -1029,69 +1034,30 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
             <FiX className="text-xl" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Address Label
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
-              placeholder="Home, Work, etc."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Full Name
-            </label>
-            <input
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Street Address
-            </label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="space-y-4 overflow-y-auto pr-1 pb-6 flex-1">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                City
+                Address Label
               </label>
               <input
                 type="text"
-                name="city"
-                value={formData.city}
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                placeholder="Home, Work, etc."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
@@ -1099,12 +1065,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                State
+                Phone Number
               </label>
               <input
-                type="text"
-                name="state"
-                value={formData.state}
+                type="tel"
+                name="phone"
+                value={formData.phone}
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
@@ -1112,41 +1078,82 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Zip Code
+                Street Address
               </label>
               <input
                 type="text"
-                name="zipCode"
-                value={formData.zipCode}
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  State
+                </label>
+                <input
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Zip Code
+                </label>
+                <input
+                  type="text"
+                  name="zipCode"
+                  value={formData.zipCode}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Country
+              </label>
+              <input
+                type="text"
+                name="country"
+                value={formData.country}
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
               />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Country
-            </label>
-            <input
-              type="text"
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
-            />
-          </div>
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-4 border-t border-gray-100 bg-white flex-shrink-0">
             <button
               type="submit"
-              className="flex-1 gradient-green text-white py-3 rounded-xl font-semibold hover:shadow-glow-green transition-all">
+              className="flex-1 gradient-green text-white py-3.5 rounded-xl font-semibold hover:shadow-glow-green transition-all">
               Add Address
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+              className="px-6 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
               Cancel
             </button>
           </div>
@@ -1154,6 +1161,8 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
       </motion.div>
     </motion.div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default MobileCheckout;

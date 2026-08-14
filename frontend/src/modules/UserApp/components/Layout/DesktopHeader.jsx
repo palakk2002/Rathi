@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
+import { useLocationStore } from "../../../../shared/store/locationStore";
 import raathiLogo from "../../../../assets/raathifinalogo.png";
 const appLogo = {
   src: raathiLogo,
@@ -22,13 +23,15 @@ const DesktopHeader = () => {
     const unreadCount = useUserNotificationStore((state) => state.unreadCount);
     const ensureHydrated = useUserNotificationStore((state) => state.ensureHydrated);
     const toggleCart = useUIStore((state) => state.toggleCart);
+    const { locationName, isLoading: isLocationLoading, fetchCurrentLocation } = useLocationStore();
 
     const [showUserMenu, setShowUserMenu] = useState(false);
     const userMenuRef = useRef(null);
 
     useEffect(() => {
         ensureHydrated();
-    }, [ensureHydrated, isAuthenticated]);
+        fetchCurrentLocation();
+    }, [ensureHydrated, isAuthenticated, fetchCurrentLocation]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -50,18 +53,43 @@ const DesktopHeader = () => {
     return (
         <header className="hidden md:block sticky top-0 z-[999] bg-white shadow-sm border-b border-gray-100">
             <div className="container mx-auto px-4 md:px-12 lg:px-24 xl:px-40 h-20 flex items-center justify-between gap-8">
-                {/* Logo */}
-                <Link to="/home" className="flex-shrink-0 flex items-center gap-2">
-                    {appLogo.src ? (
-                        <img
-                            src={appLogo.src}
-                            alt={appLogo.alt}
-                            className="h-14 w-auto object-contain"
-                        />
-                    ) : (
-                        <span className="text-2xl font-bold text-primary-600">Rathi</span>
-                    )}
-                </Link>
+                {/* Logo & Location */}
+                <div className="flex items-center gap-4">
+                    <Link to="/home" className="flex-shrink-0 flex items-center gap-2">
+                        {appLogo.src ? (
+                            <img
+                                src={appLogo.src}
+                                alt={appLogo.alt}
+                                className="h-14 w-auto object-contain"
+                            />
+                        ) : (
+                            <span className="text-2xl font-bold text-primary-600">Rathi</span>
+                        )}
+                    </Link>
+
+                    <div
+                        className="hidden lg:flex flex-col justify-center cursor-pointer select-none text-left border-l border-gray-200 pl-3 py-1"
+                        onClick={() => {
+                            if (isAuthenticated) {
+                                navigate("/addresses");
+                            } else {
+                                navigate("/login", { state: { from: "/addresses" } });
+                            }
+                        }}
+                        title="Click to select or manage address"
+                    >
+                        <div className="flex items-center gap-1 leading-none">
+                            <span className="text-orange-500 font-bold text-xs">⚡</span>
+                            <span className="text-gray-900 font-black text-xs tracking-wider uppercase">10 MINS</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-gray-500 text-xs font-semibold mt-1 max-w-[180px]">
+                            <span className="truncate">
+                                {isLocationLoading ? 'Fetching location...' : locationName}
+                            </span>
+                            <span className="text-[8px] text-gray-400 flex-shrink-0">▼</span>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Navigation Links */}
                 <nav className="flex items-center gap-6">
