@@ -11,7 +11,8 @@
         "route":  "/vendor/products",
         "children":  [
                          "Manage Products",
-                         "Add Product"
+                         "Add Product",
+                         "Bulk Upload"
                      ]
     },
     {

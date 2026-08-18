@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import {
   FiPackage,
   FiPlus,
+  FiUpload,
 } from "react-icons/fi";
 
 const Products = () => {
@@ -28,6 +29,16 @@ const Products = () => {
       shadowColor: "shadow-green-500/20",
       hoverShadow: "hover:shadow-green-500/30",
       description: "Create a new product",
+    },
+    {
+      path: "/vendor/products/bulk-upload",
+      label: "Bulk Upload",
+      icon: FiUpload,
+      gradient: "from-purple-500 via-purple-600 to-purple-700",
+      lightGradient: "from-purple-50 via-purple-100/80 to-purple-50",
+      shadowColor: "shadow-purple-500/20",
+      hoverShadow: "hover:shadow-purple-500/30",
+      description: "Excel upload or manual grid entry",
     },
   ];
 

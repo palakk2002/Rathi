@@ -9,7 +9,7 @@ export const getInventoryReport = asyncHandler(async (req, res) => {
     const vendorObjectId = new mongoose.Types.ObjectId(req.user.id);
 
     const products = await Product.find({ vendorId: req.user.id })
-        .select('name price stockQuantity lowStockThreshold')
+        .select('name price stockQuantity lowStockThreshold variants stock')
         .lean();
 
     const reportMap = {};
@@ -26,6 +26,8 @@ export const getInventoryReport = asyncHandler(async (req, res) => {
             stockValue: stockQuantity * price,
             sold: 0,
             lowStockThreshold,
+            stockStatus: product.stock || 'in_stock',
+            variants: product.variants || null,
         };
     }
 

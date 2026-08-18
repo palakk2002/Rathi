@@ -137,13 +137,49 @@ export const getEffectiveGstPreview = (categoryId, price, taxIncluded, productId
 export const deleteVendorProduct = (id) =>
     api.delete(`/vendor/products/${id}`);
 
+export const deleteVendorProductsBulk = (productIds = null) =>
+    api.delete('/vendor/products/bulk-delete-all', { data: { productIds } });
+
+export const updateVendorStock = (productId, payload) => {
+    const body = typeof payload === 'object' && payload !== null ? payload : { stockQuantity: payload };
+    return api.patch(`/vendor/stock/${productId}`, body);
+};
+
+// ─── BULK UPLOAD ─────────────────────────────────────────────────────────────
+
 /**
- * Update stock quantity for a product (auto-updates stock status)
- * @param {string} productId  — MongoDB _id
- * @param {number} stockQuantity
+ * Download vendor bulk product upload Excel template
  */
-export const updateVendorStock = (productId, stockQuantity) =>
-    api.patch(`/vendor/stock/${productId}`, { stockQuantity });
+export const downloadBulkTemplate = () =>
+    api.get('/vendor/products/bulk/template', { responseType: 'blob' });
+
+/**
+ * Validate Excel file or manual grid JSON array for bulk upload
+ * @param {FormData|object} data
+ */
+export const validateBulkProducts = (data) => {
+    if (data instanceof FormData) {
+        return api.post('/vendor/products/bulk/validate', data, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    }
+    return api.post('/vendor/products/bulk/validate', data);
+};
+
+/**
+ * Confirm and import validated products
+ * @param {Array} products
+ */
+export const importBulkProducts = (products) =>
+    api.post('/vendor/products/bulk/import', { products });
+
+/**
+ * Download Excel Error Report for failed rows
+ * @param {Array} failedItems
+ */
+export const downloadBulkErrorReport = (failedItems) =>
+    api.post('/vendor/products/bulk/error-report', { failedItems }, { responseType: 'blob' });
+
 
 
 // ─── ORDERS ────────────────────────────────────────────────────────────────────

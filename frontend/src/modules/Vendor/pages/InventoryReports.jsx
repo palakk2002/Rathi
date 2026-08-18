@@ -6,6 +6,7 @@ import ExportButton from "../../Admin/components/ExportButton";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { getVendorInventoryReport } from "../services/vendorService";
+import { getVariantStockDetails } from "../utils/variantHelpers";
 
 const InventoryReports = () => {
   const { vendor } = useVendorAuthStore();
@@ -73,13 +74,34 @@ const InventoryReports = () => {
     { key: "name", label: "Product", sortable: true },
     {
       key: "currentStock",
-      label: "Current Stock",
+      label: "Exact Current Stock",
       sortable: true,
-      render: (value) => (
-        <span className={value < 10 ? "text-red-600 font-semibold" : "text-gray-800"}>
-          {value}
-        </span>
-      ),
+      render: (value, row) => {
+        const variantsList = getVariantStockDetails(row);
+        const hasVariants = variantsList.length > 0;
+        const stockNum = Number(value || 0);
+
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <span
+              className={`font-bold px-2.5 py-0.5 rounded text-xs ${
+                stockNum === 0
+                  ? "bg-red-100 text-red-700 border border-red-200"
+                  : stockNum <= (row.lowStockThreshold || 10)
+                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                  : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+              }`}
+            >
+              {stockNum.toLocaleString()} Units
+            </span>
+            {hasVariants && (
+              <span className="text-[11px] text-gray-500 font-medium">
+                {variantsList.length} variants
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "price",

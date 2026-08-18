@@ -18,6 +18,9 @@ import * as gstController from '../../admin/controllers/gst.controller.js';
 import * as brandController from '../controllers/brand.controller.js';
 import * as payoutController from '../controllers/payout.controller.js';
 import * as gstSettingsController from '../controllers/gstSettings.controller.js';
+import * as bulkUploadController from '../controllers/bulkUpload.controller.js';
+import multer from 'multer';
+
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -88,8 +91,18 @@ router.get('/gst-settings', ...vendorAuth, gstSettingsController.getGstSettings)
 router.post('/gst-settings', ...vendorAuth, gstSettingsController.updateGstSettings);
 router.get('/gst-settings/category/:categoryId', ...vendorAuth, gstSettingsController.getCategoryDefaultGst);
 
+const memoryUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 15 * 1024 * 1024 }
+});
+
 // Products
 router.get('/products', ...vendorAuth, productController.getVendorProducts);
+router.get('/products/bulk/template', ...vendorAuth, bulkUploadController.downloadTemplate);
+router.post('/products/bulk/validate', ...vendorAuth, memoryUpload.single('file'), bulkUploadController.validateBulkProducts);
+router.post('/products/bulk/import', ...vendorAuth, bulkUploadController.importBulkProducts);
+router.post('/products/bulk/error-report', ...vendorAuth, bulkUploadController.downloadErrorReport);
+router.delete('/products/bulk-delete-all', ...vendorAuth, productController.deleteAllProducts);
 router.get('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.getVendorProductById);
 router.post('/products', ...vendorAuth, validate(createProductSchema), productController.createProduct);
 router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), validate(updateProductSchema), productController.updateProduct);

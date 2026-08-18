@@ -5,6 +5,7 @@ import {
     createVendorProduct,
     updateVendorProduct,
     deleteVendorProduct,
+    deleteVendorProductsBulk,
     updateVendorStock,
 } from '../services/vendorService';
 import toast from 'react-hot-toast';
@@ -167,18 +168,43 @@ export const useVendorProductStore = create((set, get) => ({
         }
     },
 
+    /**
+     * Delete all products (or a bulk array of product IDs) from the vendor catalog.
+     * @param {Array<string>|null} productIds
+     */
+    removeAllProducts: async (productIds = null) => {
+        set({ isLoading: true });
+        try {
+            await deleteVendorProductsBulk(productIds);
+            set((state) => {
+                if (Array.isArray(productIds) && productIds.length > 0) {
+                    const idSet = new Set(productIds.map(String));
+                    const remaining = state.products.filter((p) => !idSet.has(String(p._id ?? p.id)));
+                    return { products: remaining, total: remaining.length, isLoading: false };
+                }
+                return { products: [], total: 0, isLoading: false };
+            });
+            toast.success('Products deleted successfully');
+            return true;
+        } catch {
+            set({ isLoading: false });
+            toast.error('Failed to delete products');
+            return false;
+        }
+    },
+
     // ─── STOCK ───────────────────────────────────────────────────────────────────
 
     /**
-     * Update stock quantity for a product.
+     * Update stock quantity or variant stock map for a product.
      * @param {string} productId
-     * @param {number} stockQuantity
+     * @param {number|object} payload
      * @returns {boolean} success
      */
-    patchStock: async (productId, stockQuantity) => {
+    patchStock: async (productId, payload) => {
         set({ isSaving: true });
         try {
-            const res = await updateVendorStock(productId, stockQuantity);
+            const res = await updateVendorStock(productId, payload);
             const updated = res.data ?? res;
             set((state) => ({
                 products: state.products.map((p) =>

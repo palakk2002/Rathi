@@ -291,3 +291,34 @@ export const buildVariantPayload = (rawVariants = {}) => {
     defaultSelection,
   };
 };
+
+export const getVariantStockDetails = (product) => {
+  const variants = product?.variants;
+  if (!variants) return [];
+  const sizes = variants.sizes || [];
+  const colors = variants.colors || [];
+  const attributes = variants.attributes || [];
+  const stockMap = variants.stockMap || {};
+
+  const combinations = buildVariantCombinations(sizes, colors, attributes);
+  const stockMapObject = stockMap instanceof Map ? Object.fromEntries(stockMap) : (stockMap || {});
+
+  if (!combinations || combinations.length === 0) {
+    const entries = Object.entries(stockMapObject);
+    return entries.map(([key, qty]) => ({
+      key,
+      label: key.replace(/[\=|]/g, " ").toUpperCase(),
+      stockQuantity: Number(qty || 0),
+    }));
+  }
+
+  return combinations.map((comb) => {
+    const rawQty = stockMapObject[comb.key];
+    const qty = rawQty !== undefined && rawQty !== null ? Number(rawQty) : 0;
+    return {
+      key: comb.key,
+      label: comb.label || comb.key,
+      stockQuantity: qty,
+    };
+  });
+};

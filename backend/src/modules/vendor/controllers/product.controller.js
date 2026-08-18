@@ -318,23 +318,55 @@ export const deleteProduct = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, null, 'Product deleted.'));
 });
 
+// DELETE /api/vendor/products-bulk
+export const deleteAllProducts = asyncHandler(async (req, res) => {
+    const { productIds } = req.body || {};
+    let filter = { vendorId: req.user.id };
+    if (Array.isArray(productIds) && productIds.length > 0) {
+        filter._id = { $in: productIds };
+    }
+    const result = await Product.deleteMany(filter);
+    res.status(200).json(new ApiResponse(200, { deletedCount: result.deletedCount }, 'Products deleted.'));
+});
+
 // PATCH /api/vendor/stock/:productId
 export const updateStock = asyncHandler(async (req, res) => {
-    const { stockQuantity } = req.body;
+    const { stockQuantity, variantStockMap } = req.body;
     const product = await Product.findOne({ _id: req.params.productId, vendorId: req.user.id });
     if (!product) throw new ApiError(404, 'Product not found.');
 
-    const numericStockQuantity = Number(stockQuantity);
-    if (
-        !Number.isFinite(numericStockQuantity) ||
-        numericStockQuantity < 0 ||
-        !Number.isInteger(numericStockQuantity)
-    ) {
-        throw new ApiError(400, 'Invalid stock quantity.');
+    if (variantStockMap && typeof variantStockMap === 'object') {
+        const newStockMap = {};
+        for (const [k, v] of Object.entries(variantStockMap)) {
+            const num = Number(v);
+            if (!Number.isFinite(num) || num < 0 || !Number.isInteger(num)) {
+                throw new ApiError(400, `Invalid stock quantity for variant ${k}.`);
+            }
+            newStockMap[k] = num;
+        }
+        if (!product.variants) product.variants = {};
+        product.variants.stockMap = newStockMap;
+        product.markModified('variants');
+
+        const variantAggregateStock = calculateVariantAggregateStock(product.variants);
+        if (Number.isFinite(variantAggregateStock)) {
+            product.stockQuantity = variantAggregateStock;
+        }
+    } else if (typeof stockQuantity !== 'undefined') {
+        const numericStockQuantity = Number(stockQuantity);
+        if (
+            !Number.isFinite(numericStockQuantity) ||
+            numericStockQuantity < 0 ||
+            !Number.isInteger(numericStockQuantity)
+        ) {
+            throw new ApiError(400, 'Invalid stock quantity.');
+        }
+        product.stockQuantity = numericStockQuantity;
+    } else {
+        throw new ApiError(400, 'Stock quantity or variant stock map is required.');
     }
 
-    product.stockQuantity = numericStockQuantity;
-    product.stock = deriveStockStatus(numericStockQuantity, product.lowStockThreshold);
+    product.stock = deriveStockStatus(product.stockQuantity, product.lowStockThreshold);
     await product.save();
 
     res.status(200).json(new ApiResponse(200, product, 'Stock updated.'));
