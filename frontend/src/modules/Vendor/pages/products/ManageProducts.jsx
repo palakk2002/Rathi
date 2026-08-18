@@ -11,11 +11,12 @@ import { formatPrice } from "../../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
+import { getVariantStockDetails } from "../../utils/variantHelpers";
 
 const ManageProducts = () => {
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
-  const { products, isLoading, fetchProducts, removeProduct } = useVendorProductStore();
+  const { products, isLoading, fetchProducts, removeProduct, removeAllProducts } = useVendorProductStore();
   const { categories, initialize: initCategories } = useCategoryStore();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,6 +26,7 @@ const ManageProducts = () => {
     isOpen: false,
     productId: null,
   });
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
 
   const vendorId = vendor?.id || vendor?._id;
 
@@ -92,9 +94,23 @@ const ManageProducts = () => {
     },
     {
       key: "stockQuantity",
-      label: "Stock",
+      label: "Exact Stock",
       sortable: true,
-      render: (value) => value?.toLocaleString() || 0,
+      render: (value, row) => {
+        const variantsList = getVariantStockDetails(row);
+        const hasVariants = variantsList.length > 0;
+        const stockNum = Number(value || 0);
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <span className="font-bold text-gray-900 text-sm">{stockNum.toLocaleString()} Units</span>
+            {hasVariants && (
+              <span className="text-[11px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md font-medium border border-blue-100">
+                {variantsList.length} variants
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "stock",
@@ -129,6 +145,7 @@ const ManageProducts = () => {
       render: (_, row) => (
         <div className="flex items-center gap-2">
           <button
+            title="Edit Product"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/vendor/products/${row._id ?? row.id}`);
@@ -137,6 +154,7 @@ const ManageProducts = () => {
             <FiEdit />
           </button>
           <button
+            title="Delete Product"
             onClick={(e) => {
               e.stopPropagation();
               setDeleteModal({ isOpen: true, productId: row._id ?? row.id });
@@ -156,6 +174,13 @@ const ManageProducts = () => {
     }
   };
 
+  const confirmDeleteAll = async () => {
+    const success = await removeAllProducts();
+    if (success) {
+      setIsDeleteAllModalOpen(false);
+    }
+  };
+
   if (!vendorId) {
     return (
       <div className="text-center py-12">
@@ -170,7 +195,7 @@ const ManageProducts = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="lg:hidden">
+        <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
             Manage Products
           </h1>
@@ -178,6 +203,15 @@ const ManageProducts = () => {
             View, edit, and manage your product catalog
           </p>
         </div>
+
+        {products.length > 0 && (
+          <button
+            onClick={() => setIsDeleteAllModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-xl transition-all font-semibold text-xs sm:text-sm shadow-xs self-start sm:self-auto">
+            <FiTrash2 className="text-base" />
+            <span>Delete All Products ({products.length})</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -266,6 +300,7 @@ const ManageProducts = () => {
         )}
       </div>
 
+      {/* Delete Single Product Modal */}
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, productId: null })}
@@ -273,6 +308,18 @@ const ManageProducts = () => {
         title="Delete Product?"
         message="Are you sure you want to delete this product? This action cannot be undone."
         confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
+
+      {/* Delete All Products Modal */}
+      <ConfirmModal
+        isOpen={isDeleteAllModalOpen}
+        onClose={() => setIsDeleteAllModalOpen(false)}
+        onConfirm={confirmDeleteAll}
+        title="Delete ALL Products?"
+        message={`Are you sure you want to delete ALL ${products.length} product(s) in your catalog? This action CANNOT be undone.`}
+        confirmText={`Yes, Delete All ${products.length} Products`}
         cancelText="Cancel"
         type="danger"
       />

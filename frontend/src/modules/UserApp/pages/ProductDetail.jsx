@@ -297,11 +297,64 @@ const MobileProductDetail = () => {
     setSelectedVariant({});
   }, [product]);
 
-  useEffect(() => {
-    if (product?.id) {
-      fetchReviews(product.id, { sort: "newest", limit: 50 });
+  const productImages = useMemo(() => {
+    if (!product) return [];
+    const selectedVariantKey = getVariantSignature(selectedVariant || {});
+    const variantImage = String(
+      product?.variants?.imageMap?.[selectedVariantKey] ||
+      product?.variants?.imageMap?.get?.(selectedVariantKey) ||
+      ""
+    ).trim();
+    const images =
+      Array.isArray(product.images) && product.images.length > 0
+        ? product.images.filter(Boolean)
+        : product.image
+          ? [product.image]
+          : [];
+    if (variantImage) {
+      return [variantImage, ...images.filter((img) => img !== variantImage)];
     }
-  }, [product?.id, fetchReviews]);
+    return images;
+  }, [product, selectedVariant]);
+
+  const currentPrice = useMemo(() => {
+    return resolveVariantPrice(product, selectedVariant);
+  }, [product, selectedVariant]);
+
+  const selectedAvailableStock = useMemo(() => {
+    const variantKey = getVariantSignature(selectedVariant || {});
+    const variantStockValue = Number(
+      product?.variants?.stockMap?.[variantKey] ??
+      product?.variants?.stockMap?.get?.(variantKey)
+    );
+    if (Number.isFinite(variantStockValue)) {
+      return Math.max(0, variantStockValue);
+    }
+    return Number(product?.stockQuantity || 0);
+  }, [product, selectedVariant]);
+
+  const productFaqs = useMemo(() => {
+    if (!Array.isArray(product?.faqs)) return [];
+    return product.faqs
+      .map((faq) => ({
+        question: String(faq?.question || "").trim(),
+        answer: String(faq?.answer || "").trim(),
+      }))
+      .filter((faq) => faq.question && faq.answer);
+  }, [product?.faqs]);
+
+  const eligibleDeliveredOrderId = useMemo(() => {
+    if (!isAuthenticated || !user?.id || !isMongoId(product?.id)) return null;
+    const userOrders = getAllOrders(user.id) || [];
+    const eligibleOrder = userOrders.find((order) => {
+      if (String(order?.status || "").toLowerCase() !== "delivered") return false;
+      const items = Array.isArray(order?.items) ? order.items : [];
+      return items.some(
+        (item) => String(item?.productId || item?.id || "") === String(product.id)
+      );
+    });
+    return eligibleOrder?._id || null;
+  }, [isAuthenticated, user?.id, product?.id, getAllOrders]);
 
   if (!product) {
     return (
@@ -458,65 +511,6 @@ const MobileProductDetail = () => {
       setQuantity(newQuantity);
     }
   };
-
-  const productImages = useMemo(() => {
-    if (!product) return [];
-    const selectedVariantKey = getVariantSignature(selectedVariant || {});
-    const variantImage = String(
-      product?.variants?.imageMap?.[selectedVariantKey] ||
-      product?.variants?.imageMap?.get?.(selectedVariantKey) ||
-      ""
-    ).trim();
-    const images =
-      Array.isArray(product.images) && product.images.length > 0
-        ? product.images.filter(Boolean)
-        : product.image
-          ? [product.image]
-          : [];
-    if (variantImage) {
-      return [variantImage, ...images.filter((img) => img !== variantImage)];
-    }
-    return images;
-  }, [product, selectedVariant]);
-
-  const currentPrice = useMemo(() => {
-    return resolveVariantPrice(product, selectedVariant);
-  }, [product, selectedVariant]);
-
-  const selectedAvailableStock = useMemo(() => {
-    const variantKey = getVariantSignature(selectedVariant || {});
-    const variantStockValue = Number(
-      product?.variants?.stockMap?.[variantKey] ??
-      product?.variants?.stockMap?.get?.(variantKey)
-    );
-    if (Number.isFinite(variantStockValue)) {
-      return Math.max(0, variantStockValue);
-    }
-    return Number(product?.stockQuantity || 0);
-  }, [product, selectedVariant]);
-
-  const productFaqs = useMemo(() => {
-    if (!Array.isArray(product?.faqs)) return [];
-    return product.faqs
-      .map((faq) => ({
-        question: String(faq?.question || "").trim(),
-        answer: String(faq?.answer || "").trim(),
-      }))
-      .filter((faq) => faq.question && faq.answer);
-  }, [product?.faqs]);
-
-  const eligibleDeliveredOrderId = useMemo(() => {
-    if (!isAuthenticated || !user?.id || !isMongoId(product?.id)) return null;
-    const userOrders = getAllOrders(user.id) || [];
-    const eligibleOrder = userOrders.find((order) => {
-      if (String(order?.status || "").toLowerCase() !== "delivered") return false;
-      const items = Array.isArray(order?.items) ? order.items : [];
-      return items.some(
-        (item) => String(item?.productId || item?.id || "") === String(product.id)
-      );
-    });
-    return eligibleOrder?._id || null;
-  }, [isAuthenticated, user?.id, product?.id, getAllOrders]);
 
   const handleSubmitReview = async (reviewData) => {
     if (isBlocked) {
