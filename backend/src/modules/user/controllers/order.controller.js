@@ -259,7 +259,8 @@ export const placeOrder = asyncHandler(async (req, res) => {
         // Always trust server-side product pricing; never trust client-sent item.price.
         const { price: itemPrice, variantKey, hasVariantAxes } = resolveVariantSelection(product, item.variant);
         const variantStockValue = variantKey ? Number(product?.variants?.stockMap?.get?.(variantKey) ?? product?.variants?.stockMap?.[variantKey]) : null;
-        if (hasVariantAxes && variantKey && Number.isFinite(variantStockValue) && variantStockValue < item.quantity) {
+        const hasTrackedVariantStock = Boolean(hasVariantAxes && variantKey && Number.isFinite(variantStockValue));
+        if (hasTrackedVariantStock && variantStockValue < item.quantity) {
             throw new ApiError(400, `Only ${variantStockValue} units available for selected variant of ${product.name}.`);
         }
         const itemSubtotal = itemPrice * item.quantity;
@@ -278,6 +279,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
             quantity: item.quantity,
             variant: item.variant,
             variantKey: variantKey || undefined,
+            hasTrackedVariantStock,
         };
         enrichedItems.push(enriched);
 
@@ -422,7 +424,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
             // 7. Deduct stock atomically to prevent oversell under concurrent checkout.
             for (const item of enrichedItems) {
-                const variantPath = item.variantKey ? `variants.stockMap.${item.variantKey}` : null;
+                const variantPath = (item.variantKey && item.hasTrackedVariantStock) ? `variants.stockMap.${item.variantKey}` : null;
                 const baseFilter = {
                     _id: item.productId,
                     stock: { $ne: 'out_of_stock' },
@@ -618,9 +620,14 @@ export const cancelOrder = asyncHandler(async (req, res) => {
                     .session(session)
                     .lean();
                 const variantKey = resolveOrderItemVariantKey(productSnapshot, item);
+                const hasVariantInMap = variantKey && (
+                    productSnapshot?.variants?.stockMap instanceof Map
+                        ? productSnapshot.variants.stockMap.has(variantKey)
+                        : Object.prototype.hasOwnProperty.call(productSnapshot?.variants?.stockMap || {}, variantKey)
+                );
 
                 const incUpdate = { stockQuantity: quantity };
-                if (variantKey) {
+                if (hasVariantInMap) {
                     incUpdate[`variants.stockMap.${variantKey}`] = quantity;
                 }
 

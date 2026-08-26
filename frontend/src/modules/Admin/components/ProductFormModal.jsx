@@ -623,13 +623,24 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       return;
     }
 
+    const parsedStockQuantity = formData.stockQuantity ? parseInt(formData.stockQuantity, 10) : 999;
+    const sanitizedVariants = { ...(formData.variants || {}) };
+    const variantStockMap = { ...(sanitizedVariants.stockMap || {}) };
+    if (variantCombinations.length === 1) {
+      const singleKey = variantCombinations[0].key;
+      if (variantStockMap[singleKey] === undefined || variantStockMap[singleKey] === "" || variantStockMap[singleKey] === null) {
+        variantStockMap[singleKey] = parsedStockQuantity;
+      }
+    }
+    sanitizedVariants.stockMap = variantStockMap;
+
     const submissionData = {
       ...formData,
       price: parseFloat(formData.price),
       originalPrice: formData.originalPrice
         ? parseFloat(formData.originalPrice)
         : null,
-      stockQuantity: formData.stockQuantity ? parseInt(formData.stockQuantity, 10) : 999,
+      stockQuantity: parsedStockQuantity,
       totalAllowedQuantity: formData.totalAllowedQuantity
         ? parseInt(formData.totalAllowedQuantity)
         : null,
@@ -640,6 +651,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       subcategoryId: formData.subcategoryId || null,
       brandId: formData.brandId || null,
       vendorId: formData.vendorId || null,
+      variants: sanitizedVariants,
       faqs: (formData.faqs || [])
         .map((faq) => ({
           question: String(faq?.question || "").trim(),

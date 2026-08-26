@@ -366,7 +366,10 @@ router.get('/categories/all', asyncHandler(async (req, res) => {
 
 // GET /api/brands (public)
 router.get('/brands/all', asyncHandler(async (req, res) => {
-    const brands = await Brand.find({ isActive: true }).sort({ name: 1 });
+    const brands = await Brand.find({ isActive: true })
+        .select('name logo slug isFeatured')
+        .sort({ name: 1 })
+        .lean();
     res.status(200).json(new ApiResponse(200, brands, 'Brands fetched.'));
 }));
 
@@ -374,7 +377,7 @@ router.get('/brands/all', asyncHandler(async (req, res) => {
 router.get('/vendors/all', asyncHandler(async (req, res) => {
     const { status = 'approved', page = 1, limit = 50, search } = req.query;
     const numericPage = Math.max(parseInt(page, 10) || 1, 1);
-    const numericLimit = Math.max(parseInt(limit, 10) || 50, 1);
+    const numericLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100); // Cap max limit at 100 to prevent RAM spike & 502 Bad Gateway
     const skip = (numericPage - 1) * numericLimit;
     const filter = {};
 
@@ -389,17 +392,19 @@ router.get('/vendors/all', asyncHandler(async (req, res) => {
     }
 
     const vendors = await Vendor.find(filter)
-        .select('-password -otp -otpExpiry')
+        .select('-password -otp -otpExpiry -bankDetails -commissionRate -gstCertificate -panCardDocument -fssaiLicenseDocument')
         .sort({ rating: -1, reviewCount: -1, createdAt: -1 })
         .skip(skip)
-        .limit(numericLimit);
+        .limit(numericLimit)
+        .lean();
+
     const total = await Vendor.countDocuments(filter);
 
     const vendorIds = vendors.map((v) => v._id);
-    const productCounts = await Product.aggregate([
+    const productCounts = vendorIds.length > 0 ? await Product.aggregate([
         { $match: { vendorId: { $in: vendorIds }, isActive: true, isReviewRemoved: { $ne: true } } },
         { $group: { _id: '$vendorId', count: { $sum: 1 } } }
-    ]);
+    ]) : [];
 
     const countMap = {};
     productCounts.forEach((item) => {

@@ -235,7 +235,7 @@ export const syncVariantPricesWithAxes = (
   };
 };
 
-export const buildVariantPayload = (rawVariants = {}) => {
+export const buildVariantPayload = (rawVariants = {}, fallbackStock = null) => {
   const sizes = uniqueClean(rawVariants?.sizes || []);
   const colors = uniqueClean(rawVariants?.colors || []);
   const attributes = normalizeAttributes(rawVariants?.attributes || []).map((attr) => ({
@@ -256,6 +256,8 @@ export const buildVariantPayload = (rawVariants = {}) => {
     const parsedStock = parsePriceValue(rawVariants?.stockMap?.[key]);
     if (parsedStock !== null) {
       stockMap[key] = parsedStock;
+    } else if (combinations.length === 1 && parsePriceValue(fallbackStock) !== null) {
+      stockMap[key] = parsePriceValue(fallbackStock);
     }
 
     const image = String(rawVariants?.imageMap?.[key] || "").trim();
@@ -314,7 +316,9 @@ export const getVariantStockDetails = (product) => {
 
   return combinations.map((comb) => {
     const rawQty = stockMapObject[comb.key];
-    const qty = rawQty !== undefined && rawQty !== null ? Number(rawQty) : 0;
+    const qty = rawQty !== undefined && rawQty !== null
+      ? Number(rawQty)
+      : (combinations.length === 1 && Number(product?.stockQuantity || 0) > 0 ? Number(product.stockQuantity) : 0);
     return {
       key: comb.key,
       label: comb.label || comb.key,

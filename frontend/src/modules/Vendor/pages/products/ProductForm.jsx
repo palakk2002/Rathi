@@ -624,7 +624,7 @@ const ProductForm = () => {
           answer: String(faq?.answer || "").trim(),
         }))
         .filter((faq) => faq.question && faq.answer),
-      variants: buildVariantPayload(formData.variants || {}),
+      variants: buildVariantPayload(formData.variants || {}, parsedStockQuantity),
     };
 
     let result;

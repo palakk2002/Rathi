@@ -88,7 +88,7 @@ const buildCombinationsFromAttributes = (attributes = []) => {
     return combos;
 };
 
-const normalizeVariantsPayload = (rawVariants = {}, fallbackPrice) => {
+const normalizeVariantsPayload = (rawVariants = {}, fallbackPrice, fallbackStock = null) => {
     if (!rawVariants || typeof rawVariants !== 'object') {
         return { sizes: [], colors: [], prices: {}, stockMap: {}, imageMap: {}, defaultVariant: {} };
     }
@@ -138,7 +138,11 @@ const normalizeVariantsPayload = (rawVariants = {}, fallbackPrice) => {
         }
 
         const parsedStock = toNonNegativeNumber(stockSource[key]);
-        if (parsedStock !== null) stockMap[key] = parsedStock;
+        if (parsedStock !== null) {
+            stockMap[key] = parsedStock;
+        } else if (combinations.length === 1 && toNonNegativeNumber(fallbackStock) !== null) {
+            stockMap[key] = toNonNegativeNumber(fallbackStock);
+        }
 
         const image = String(imageSource[key] || '').trim();
         if (image) imageMap[key] = image;
@@ -440,9 +444,8 @@ export const restoreProductByReview = asyncHandler(async (req, res) => {
 export const createProduct = asyncHandler(async (req, res) => {
     const { name, stockQuantity = 0, stock, ...rest } = req.body;
     const slug = slugify(name) + '-' + Date.now();
-    const normalizedVariants = normalizeVariantsPayload(rest.variants, rest.price);
-
     const numericStockQuantity = Number(stockQuantity) || 0;
+    const normalizedVariants = normalizeVariantsPayload(rest.variants, rest.price, numericStockQuantity);
     const variantAggregateStock = calculateVariantAggregateStock(normalizedVariants);
     const finalStockQuantity = Number.isFinite(variantAggregateStock)
         ? variantAggregateStock
@@ -493,7 +496,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
             Object.prototype.hasOwnProperty.call(payload, 'price')
                 ? payload.price
                 : (await Product.findById(req.params.id).select('price').lean())?.price;
-        payload.variants = normalizeVariantsPayload(payload.variants, fallbackPrice);
+        const currentStock = payload.stockQuantity !== undefined ? payload.stockQuantity : (await Product.findById(req.params.id).select('stockQuantity').lean())?.stockQuantity;
+        payload.variants = normalizeVariantsPayload(payload.variants, fallbackPrice, currentStock);
         const variantAggregateStock = calculateVariantAggregateStock(payload.variants);
         if (Number.isFinite(variantAggregateStock)) {
             payload.stockQuantity = variantAggregateStock;

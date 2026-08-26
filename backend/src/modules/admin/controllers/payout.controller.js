@@ -9,7 +9,7 @@ import { createNotification } from '../../../services/notification.service.js';
 // GET /api/admin/payouts/vendors
 export const getVendorsPayoutList = asyncHandler(async (req, res) => {
     const vendors = await Vendor.find()
-        .select('+bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode +bankDetails.branchName +bankDetails.upiId +bankDetails.cancelledCheque +bankDetails.panNumber +bankDetails.gstNumber')
+        .select('+bankDetails')
         .sort({ createdAt: -1 });
 
     const result = [];

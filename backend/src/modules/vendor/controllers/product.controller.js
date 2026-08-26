@@ -91,7 +91,7 @@ const buildCombinationsFromAttributes = (attributes = []) => {
     return combos;
 };
 
-const normalizeVariantsPayload = (rawVariants = {}, fallbackPrice) => {
+const normalizeVariantsPayload = (rawVariants = {}, fallbackPrice, fallbackStock = null) => {
     if (!rawVariants || typeof rawVariants !== 'object') {
         return { sizes: [], colors: [], attributes: [], prices: {}, stockMap: {}, imageMap: {}, defaultVariant: {}, defaultSelection: {} };
     }
@@ -146,6 +146,8 @@ const normalizeVariantsPayload = (rawVariants = {}, fallbackPrice) => {
         const parsedStock = toNonNegativeNumber(stockSource[key]);
         if (parsedStock !== null) {
             stockMap[key] = parsedStock;
+        } else if (combinations.length === 1 && toNonNegativeNumber(fallbackStock) !== null) {
+            stockMap[key] = toNonNegativeNumber(fallbackStock);
         }
 
         const image = String(imageSource[key] || '').trim();
@@ -245,7 +247,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     if (!Number.isFinite(price) || price < 0) {
         throw new ApiError(400, 'Invalid product price.');
     }
-    const normalizedVariants = normalizeVariantsPayload(rest.variants, price);
+    const normalizedVariants = normalizeVariantsPayload(rest.variants, price, stockQuantity);
     const variantAggregateStock = calculateVariantAggregateStock(normalizedVariants);
     const finalStockQuantity = Number.isFinite(variantAggregateStock)
         ? variantAggregateStock
@@ -296,7 +298,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
         product.price = price;
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'variants')) {
-        product.variants = normalizeVariantsPayload(req.body.variants, product.price);
+        const currentStockQty = typeof req.body.stockQuantity !== 'undefined' ? req.body.stockQuantity : product.stockQuantity;
+        product.variants = normalizeVariantsPayload(req.body.variants, product.price, currentStockQty);
         const variantAggregateStock = calculateVariantAggregateStock(product.variants);
         if (Number.isFinite(variantAggregateStock)) {
             product.stockQuantity = variantAggregateStock;

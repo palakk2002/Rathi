@@ -539,7 +539,7 @@ const AddProduct = () => {
           answer: String(faq?.answer || "").trim(),
         }))
         .filter((faq) => faq.question && faq.answer),
-      variants: buildVariantPayload(formData.variants || {}),
+      variants: buildVariantPayload(formData.variants || {}, parsedStockQuantity),
     };
 
     const result = await addProduct(payload);

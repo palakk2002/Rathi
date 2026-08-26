@@ -83,7 +83,7 @@ export const getVendorSettlements = asyncHandler(async (req, res) => {
 // GET /api/vendor/payouts/bank-details
 export const getVendorBankDetails = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findById(req.user.id)
-        .select('+bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
+        .select('+bankDetails');
     
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
